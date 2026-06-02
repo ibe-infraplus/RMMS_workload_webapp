@@ -1,0 +1,49 @@
+.venv/
+venv/
+ENV/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+.pytest_cache/
+.tox/
+.nox/
+coverage.xml
+.coverage
+
+# Type checkers
+.mypy_cache/
+
+# IDEs and editor folders
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Environment files
+.env
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and databases
+*.log
+*.sqlite
+
+# OneDrive temp files
+~$*
