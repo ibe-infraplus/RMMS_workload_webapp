@@ -10,6 +10,7 @@ FILES = {
     "rmms": "แผนงาน RMMS.xlsx",
     "cluster": "cluster_district.xlsx",
     "group": "group_data_final.xlsx",
+    "operating_distances": "operating_distances.xlsx",
 }
 
 CLUSTER_GRASS_FORMULA = {
@@ -194,9 +195,9 @@ WORKLOAD_CONFIG = [
 
 FACTOR_PROFILES = {
     "none": {},
-    "pavement": {"traffic_score": 0.40, "truck_score": 0.25, "elevation_score": 0.15, "rain_score": 0.20},
-    "bridge": {"traffic_score": 0.30, "truck_score": 0.35, "elevation_score": 0.25, "rain_score": 0.10},
-    "drainage": {"traffic_score": 0.15, "truck_score": 0.00, "elevation_score": 0.25, "rain_score": 0.60},
-    "traffic_asset": {"traffic_score": 0.60, "truck_score": 0.20, "elevation_score": 0.00, "rain_score": 0.20},
+    "pavement": {"traffic_score": 0.30, "truck_score": 0.25, "elevation_score": 0.15, "rain_score": 0.20, "operating_distance_score": 0.10},
+    "bridge": {"traffic_score": 0.25, "truck_score": 0.30, "elevation_score": 0.25, "rain_score": 0.10, "operating_distance_score": 0.10},
+    "drainage": {"traffic_score": 0.15, "truck_score": 0.00, "elevation_score": 0.20, "rain_score": 0.55, "operating_distance_score": 0.10},
+    "traffic_asset": {"traffic_score": 0.50, "truck_score": 0.20, "elevation_score": 0.00, "rain_score": 0.20, "operating_distance_score": 0.10},
     "rain_only": {"rain_score": 1.00},
 }

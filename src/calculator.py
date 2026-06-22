@@ -26,6 +26,7 @@ def add_condition_scores(master):
             elev_inputs.append(percentile_score(out[c].abs() if "slope_mean" in c else out[c]))
     out["elevation_score"] = pd.concat(elev_inputs, axis=1).mean(axis=1) if elev_inputs else 0
     out["rain_score"] = percentile_score(out["พื้นที่ฝนชุก"]) if "พื้นที่ฝนชุก" in out else 0
+    out["operating_distance_score"] = percentile_score(out["operating_distance"]) if "operating_distance" in out else 0
     return out
 
 
@@ -198,6 +199,7 @@ def build_results(
         "truck_score",
         "rain_score",
         "elevation_score",
+        "operating_distance_score",
     ]
     compare_cols = [c for c in compare_cols if c in master_scored.columns]
     summary = summary.merge(master_scored[compare_cols], on="dept3", how="left")

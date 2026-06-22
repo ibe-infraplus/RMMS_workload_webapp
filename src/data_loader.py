@@ -134,10 +134,17 @@ def load_district_base(data_dir=None):
     return df
 
 
+def load_operating_distances(data_dir=None):
+    df = pd.read_excel(file_path("operating_distances", data_dir))
+    df["dept3"] = first3_code(df["depot_code"])
+    return df.groupby("dept3", as_index=False)["total_distance_km"].sum().rename(columns={"total_distance_km": "operating_distance"})
+
+
 def build_master(data_dir=None):
     group = load_district_base(data_dir)
     asset = load_asset_quantities(data_dir)
     input_extra = load_input_extras(data_dir)
+    op_dist = load_operating_distances(data_dir)
 
     cluster = pd.read_excel(file_path("cluster", data_dir)).rename(columns={"deptcode_3": "dept3"})
     cluster["dept3"] = pd.to_numeric(cluster["dept3"], errors="coerce").astype("Int64")
@@ -159,6 +166,7 @@ def build_master(data_dir=None):
         .merge(input_extra, on="dept3", how="left", suffixes=("", "_input"))
         .merge(cluster[["dept3", "Cluster"]], on="dept3", how="left")
         .merge(rmms68, on="dept3", how="left")
+        .merge(op_dist[["dept3", "operating_distance"]], on="dept3", how="left")
     )
     master["hi_mast_num"] = 0.0
 
