@@ -82,6 +82,7 @@ def compute_workload(
     max_factor_uplift=MAX_FACTOR_UPLIFT,
     use_damage_probability=True,
     workload_overrides=None,
+    custom_config=None,
 ):
     master = add_condition_scores(master)
     lookup = damage_lookup(data_dir)
@@ -91,9 +92,12 @@ def compute_workload(
     if isinstance(workload_overrides, dict):
         override_map = workload_overrides
 
-    for cfg in WORKLOAD_CONFIG:
-        q_col = cfg["quantity_col"]
-        q = pd.to_numeric(master[q_col], errors="coerce").fillna(0) if q_col in master.columns else pd.Series(0, index=master.index)
+    # Use custom_config if provided, else fallback to WORKLOAD_CONFIG
+    config_to_use = custom_config if custom_config is not None else WORKLOAD_CONFIG
+
+    for cfg in config_to_use:
+        q_col = cfg.get("quantity_col", "")
+        q = pd.to_numeric(master[q_col], errors="coerce").fillna(0) if q_col and q_col in master.columns else pd.Series(0, index=master.index)
         p, unit_cost = get_dynamic_unit_cost_and_probability(cfg, lookup, data_dir=data_dir)
         ov = override_map.get(q_col, {})
         if isinstance(ov, dict):
@@ -167,6 +171,7 @@ def build_results(
     max_factor_uplift=MAX_FACTOR_UPLIFT,
     use_damage_probability=True,
     workload_overrides=None,
+    custom_config=None,
 ):
     details, master_scored = compute_workload(
         master,
@@ -174,6 +179,7 @@ def build_results(
         max_factor_uplift=max_factor_uplift,
         use_damage_probability=use_damage_probability,
         workload_overrides=workload_overrides,
+        custom_config=custom_config,
     )
     fixed = compute_fixed_cost(master_scored)
 

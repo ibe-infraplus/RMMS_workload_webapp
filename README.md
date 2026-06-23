@@ -1,71 +1,40 @@
-# Workload Cost Calculation Web App
+# RMMS Workload Web Application
 
-Streamlit mockup สำหรับ demonstrate การคำนวณงบประมาณงานบำรุงปกติของกรมทางหลวง
+Welcome to the RMMS Workload Web Application repository. 
 
-## สิ่งที่อัปเดตในเวอร์ชันนี้
+This project is designed to calculate and simulate workload costs dynamically. It supports **two different frontend interfaces** to match your deployment needs:
 
-- User เลือกแขวงและปรับ quantity ได้ทุกรายการ
-- ยังไม่ใช้ cap limit 6,000 ล้านบาท
-- `ระยะทาง 2 ช่องจราจร` ใช้สูตรใหม่:
+## 1. Modern Web App (React + FastAPI) 🌟
+This is the recommended, production-ready version. It separates the backend logic from the frontend UI for maximum performance and stability, allowing for self-deployment via Docker.
 
-```text
-Pavement workload = length_to2 × pavement_unit_cost
-```
+- **Frontend**: Built with Vite, React, and Vanilla CSS (Glassmorphism design).
+- **Backend**: Built with FastAPI (Python) and Uvicorn.
+- **Features**: Real-time budget simulation, dynamic parameter grid (add/delete/categorize parameters), interactive Plotly charts, and responsive design.
+- **Deployment**: Fully dockerized.
 
-โดย **ไม่คูณ damage probability** กับผิวจราจรแล้ว
-
-- `pavement_unit_cost` คำนวณจาก:
-  - รหัสงานใน section `ค่ามาตรฐานการซ่อมบำรุงถนนอ้างอิง` จากไฟล์ `ข้อมูลโอกาสเกิดความเสียหาย (1).xlsx`
-  - unit cost จากไฟล์ `แผนงาน RMMS.xlsx` เฉพาะปี 2568
-- เพิ่ม donut chart สำหรับดูสัดส่วนงบประมาณที่ลงไปในแต่ละแขวง
-- เพิ่มตาราง audit เพื่อตรวจสอบ workcode ที่นำมารวมเป็น pavement unit cost
-- เพิ่ม comparison สูตรผิวจราจรแบบ `คูณ probability` และ `ไม่คูณ probability`
-
-## Project structure
-
-```text
-workload_webapp/
-├─ app.py
-├─ requirements.txt
-├─ README.md
-├─ data/
-│  ├─ ข้อมูลโอกาสเกิดความเสียหาย (1).xlsx
-│  ├─ แผนงาน RMMS.xlsx
-│  ├─ cluster_district.xlsx
-│  └─ group_data_final.xlsx
-└─ src/
-   ├─ __init__.py
-   ├─ config.py
-   ├─ data_loader.py
-   └─ calculator.py
-```
-
-## วิธีรันบน VS Code
-
+**How to run (Docker):**
 ```bash
-cd workload_webapp
-python -m venv .venv
-.venv\Scripts\activate
+docker-compose up -d --build
+```
+> See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed Docker instructions.
+
+**How to run locally (Without Docker):**
+You can use the provided `run.bat` script on Windows to start both the FastAPI server and Vite frontend simultaneously.
+
+---
+
+## 2. Legacy App (Streamlit)
+The original Streamlit application is still available in the repository (`app.py`). It is a monolithic architecture that runs both the frontend and backend in a single Python process.
+
+- **Features**: Streamlit sidebar inputs, data editor grids, Plotly charts.
+- **Deployment**: Can be deployed on Streamlit Community Cloud or run locally.
+
+**How to run:**
+```bash
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-ถ้าใช้ PowerShell แล้ว activate ไม่ได้ ให้รัน:
-
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-.venv\Scripts\Activate.ps1
-```
-
-## สูตรหลัก
-
-```text
-Asset / Policy workload:
-quantity × damage_probability × unit_cost
-
-Pavement workload:
-length_to2 × pavement_unit_cost
-
-Total Budget:
-Σ(workload) + factor + fixed_cost
-```
+## Data Management
+Both systems share the same underlying logic (`src/`) and data source (`data/`). 
+Any updates to the Excel files inside the `data/` folder will be reflected in both the React app and the Streamlit app automatically.
