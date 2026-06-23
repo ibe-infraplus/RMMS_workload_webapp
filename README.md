@@ -7,6 +7,24 @@ This project is designed to calculate and simulate workload costs dynamically. I
 ## 1. Modern Web App (React + FastAPI) 🌟
 This is the recommended, production-ready version. It separates the backend logic from the frontend UI for maximum performance and stability, allowing for self-deployment via Docker.
 
+- **Frontend**: Built with Vite, React, and Vanilla CSS (Glassmorphism design).
+- **Backend**: Built with FastAPI (Python) and Uvicorn.
+- **Features**: Real-time budget simulation, dynamic parameter grid (add/delete/categorize parameters), interactive Plotly charts, and responsive design.
+- **Deployment**: Fully dockerized.
+
+### 1.1 Deployment step
+1.
+```
+npm install
+```
+2.
+```
+npm run dev
+```
+
+## Contents
+
+
 ```text
 Pavement workload = length_to2 × pavement_unit_cost
 ```
