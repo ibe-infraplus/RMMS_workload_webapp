@@ -7,10 +7,40 @@ This project is designed to calculate and simulate workload costs dynamically. I
 ## 1. Modern Web App (React + FastAPI) 🌟
 This is the recommended, production-ready version. It separates the backend logic from the frontend UI for maximum performance and stability, allowing for self-deployment via Docker.
 
-- **Frontend**: Built with Vite, React, and Vanilla CSS (Glassmorphism design).
-- **Backend**: Built with FastAPI (Python) and Uvicorn.
-- **Features**: Real-time budget simulation, dynamic parameter grid (add/delete/categorize parameters), interactive Plotly charts, and responsive design.
-- **Deployment**: Fully dockerized.
+```text
+Pavement workload = length_to2 × pavement_unit_cost
+```
+
+โดย **ไม่คูณ damage probability** กับผิวจราจรแล้ว
+
+- `pavement_unit_cost` คำนวณจาก:
+  - รหัสงานใน section `ค่ามาตรฐานการซ่อมบำรุงถนนอ้างอิง` จากไฟล์ `ข้อมูลโอกาสเกิดความเสียหาย (1).xlsx`
+  - unit cost จากไฟล์ `แผนงาน RMMS.xlsx` เฉพาะปี 2568
+- เพิ่ม donut chart สำหรับดูสัดส่วนงบประมาณที่ลงไปในแต่ละแขวง
+- เพิ่มตาราง audit เพื่อตรวจสอบ workcode ที่นำมารวมเป็น pavement unit cost
+- เพิ่ม comparison สูตรผิวจราจรแบบ `คูณ probability` และ `ไม่คูณ probability`
+
+## Project structure
+
+```text
+workload_webapp/
+├─ app.py
+├─ requirements.txt
+├─ README.md
+├─ data/
+│  ├─ ข้อมูลโอกาสเกิดความเสียหาย (1).xlsx
+│  ├─ แผนงาน RMMS.xlsx
+│  ├─ cluster_district.xlsx
+│  └─ group_data_final.xlsx
+│  └─ operating_distances.xlsx
+└─ src/
+   ├─ __init__.py
+   ├─ config.py
+   ├─ data_loader.py
+   └─ calculator.py
+```
+
+## วิธีรันบน VS Code
 
 **How to run (Docker):**
 ```bash
