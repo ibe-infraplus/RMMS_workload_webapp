@@ -17,7 +17,7 @@ def add_condition_scores(master):
     veh = out["veh_total"] if "veh_total" in out else out.get("input_veh_total", 0)
     out["traffic_score"] = percentile_score(veh)
 
-    heavy_col = next((c for c in ["truck_total", "heavy_truck", "truck_volume", "ปริมาณรถบรรทุกหนัก"] if c in out.columns), None)
+    heavy_col = next((c for c in ["veh_truck", "truck_total", "heavy_truck", "truck_volume", "ปริมาณรถบรรทุกหนัก"] if c in out.columns), None)
     out["truck_score"] = percentile_score(out[heavy_col]) if heavy_col else out["traffic_score"] * 0.70
 
     elev_inputs = []
@@ -129,10 +129,10 @@ def compute_workload(
                     "dept3": master["dept3"],
                     "division_name": master["division_name"],
                     "district_name": master["district_name"],
-                    "workload_item": cfg["item"],
-                    "category": cfg["category"],
+                    "workload_item": cfg.get("item", cfg.get("workload_item", "")),
+                    "category": cfg.get("category", ""),
                     "quantity": q,
-                    "unit": cfg["unit"],
+                    "unit": cfg.get("unit", ""),
                     "damage_probability": p,
                     "unit_cost": unit_cost,
                     "apply_damage_probability": apply_damage_probability,

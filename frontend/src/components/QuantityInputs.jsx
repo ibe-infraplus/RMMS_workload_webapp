@@ -1,0 +1,57 @@
+import { RotateCcw } from 'lucide-react';
+import Expander from './Expander';
+
+export default function QuantityInputs({
+  configsByCategory,
+  results,
+  quantityUpdates,
+  setQuantityUpdates
+}) {
+  const handleQuantityChange = (col, val) => {
+    setQuantityUpdates(prev => ({ ...prev, [col]: parseFloat(val) || 0 }));
+  };
+
+  return (
+    <>
+      <div style={{display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px'}}>
+        <div>
+          <h2 style={{marginTop: 0}}>ปรับแก้ปริมาณภาระงาน (Quantity)</h2>
+          <p style={{margin: 0}}>ระบบแสดงค่าปริมาณงานตั้งต้นของแขวงที่เลือก คุณสามารถแก้ไขตัวเลขในแต่ละรายการเพื่อจำลองงบประมาณใหม่ได้ทันที</p>
+        </div>
+        <button 
+          className="btn btn-secondary" 
+          onClick={() => setQuantityUpdates({})} 
+          style={{padding: '6px 12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap'}}
+          title="รีเซ็ตค่าปริมาณงานกลับเป็นค่าเริ่มต้น"
+        >
+          <RotateCcw size={16} /> Reset Values
+        </button>
+      </div>
+      
+      {Object.keys(configsByCategory).map(cat => (
+        <Expander key={cat} title={`${cat} (${configsByCategory[cat].length} รายการ)`} defaultOpen={true}>
+          <div className="grid-cols-3">
+            {configsByCategory[cat].map((cfg, idx) => {
+              const col = cfg.quantity_col;
+              if (!col) return null;
+              const defaultVal = results ? (results.default_quantities[col] || 0) : 0;
+              const currentVal = quantityUpdates[col] !== undefined ? quantityUpdates[col] : defaultVal;
+              const step = ['กม.', 'เมตร'].includes(cfg.unit) ? "0.001" : "1";
+              return (
+                <div key={idx} className="form-group">
+                  <label title={`source column: ${col}\n${cfg.note || ''}`}>{cfg.workload_item} ({cfg.unit})</label>
+                  <input 
+                    type="number" 
+                    step={step} 
+                    value={currentVal} 
+                    onChange={e => handleQuantityChange(col, e.target.value)} 
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </Expander>
+      ))}
+    </>
+  );
+}

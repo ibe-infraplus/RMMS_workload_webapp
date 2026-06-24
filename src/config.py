@@ -11,6 +11,7 @@ FILES = {
     "cluster": "cluster_district.xlsx",
     "group": "group_data_final.xlsx",
     "operating_distances": "operating_distances.xlsx",
+    "master": "master_final.xlsx"
 }
 
 CLUSTER_GRASS_FORMULA = {

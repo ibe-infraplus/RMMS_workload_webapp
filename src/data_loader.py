@@ -173,6 +173,11 @@ def build_master(data_dir=None):
     for col in master.select_dtypes(include=["number"]).columns:
         master[col] = master[col].fillna(0)
 
+    try:
+        master.to_excel(resolve_data_dir(data_dir) / "master_final.xlsx", index=False)
+    except Exception as e:
+        print(f"Warning: Could not save master_final.xlsx: {e}")
+
     return master
 
 

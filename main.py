@@ -4,13 +4,24 @@ import pandas as pd
 import numpy as np
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.calculator import build_results, damage_lookup, get_dynamic_unit_cost_and_probability
 from src.config import MAX_FACTOR_UPLIFT, WORKLOAD_CONFIG
 from src.data_loader import build_master
 
-app = FastAPI(title="Workload Cost API")
+app = FastAPI(
+    title="RMMS Workload Cost API",
+    description="""
+API สำหรับคำนวณและจำลองผลกระทบต่องบประมาณบำรุงรักษาทางหลวงแบบ Real-time.
+ระบบเปิดให้เรียกดูข้อมูลเริ่มต้น (Initial Data) และส่ง Parameter Grid เข้ามาคำนวณใหม่ได้ทันที.
+
+**Endpoints:**
+- `GET /api/init`: ดึงข้อมูลรายชื่อแขวง, Parameter Grid เริ่มต้น, และ Quantity ของแขวงที่ 1.
+- `POST /api/calculate`: คำนวณงบประมาณใหม่ (Revised) เปรียบเทียบกับแบบเดิม (Baseline).
+    """,
+    version="1.0.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -85,12 +96,69 @@ def get_initial_data():
     }
 
 class CalculateRequest(BaseModel):
-    selected_dept3: int
-    max_factor_uplift: float
-    use_damage_probability: bool
-    workload_overrides: Dict[str, Any]
-    quantity_updates: Dict[str, float]
-    custom_config: Optional[list] = None
+    selected_dept3: int = Field(..., description="รหัสแขวงทางหลวง (เช่น 100 for รหัสเต็ม 10000)")
+    max_factor_uplift: float = Field(0.15, description="เพดานสูงสุดของ Scaling Factor (Condition Index)")
+    use_damage_probability: bool = Field(True, description="เปิด/ปิดการคูณ Damage Probability")
+    workload_overrides: Dict[str, Any] = Field(..., description="Map ของคอลัมน์ปริมาณงานที่ถูก Override ค่าความน่าจะเป็นและราคากลาง")
+    quantity_updates: Dict[str, float] = Field(..., description="Map ของคอลัมน์ปริมาณงานที่ถูกกรอกแก้ไขตัวเลขใหม่")
+    custom_config: Optional[list] = Field(None, description="โครงสร้าง Parameter Grid ที่ถูกเพิ่ม/ลด/แก้ไข จากหน้าบ้าน")
+
+@app.get("/api/districts", tags=["Granular API"], summary="ดึงรายชื่อแขวงทางหลวงทั้งหมด")
+def get_all_districts():
+    master = get_master_data()
+    master_view = master.copy()
+    master_view["district_label"] = master_view["dept3"].astype(str) + " - " + master_view["district_name"].astype(str)
+    master_view = master_view.sort_values(["division_name", "district_name"])
+    districts = master_view[["dept3", "district_label", "division_name", "district_name"]].to_dict(orient="records")
+    return {"districts": replace_nan(districts)}
+
+@app.get("/api/districts/{dept3}", tags=["Granular API"], summary="ดึงข้อมูลตั้งต้น (Raw Quantities) ของแขวงที่ระบุ")
+def get_district_raw_data(dept3: int):
+    master = get_master_data()
+    mask = master["dept3"].astype(int) == dept3
+    if not any(mask):
+        return {"error": "District not found"}
+    row = master.loc[mask].iloc[0]
+    
+    quantities = {}
+    for cfg in WORKLOAD_CONFIG:
+        q_col = cfg.get("quantity_col")
+        if q_col:
+            val = float(pd.to_numeric(pd.Series([row.get(q_col, 0)]), errors="coerce").fillna(0).iloc[0])
+            quantities[q_col] = val
+            
+    return {
+        "dept3": dept3,
+        "division_name": row.get("division_name"),
+        "district_name": row.get("district_name"),
+        "raw_attributes": {
+            "length_to2": replace_nan(row.get("length_to2")),
+            "aadt_w": replace_nan(row.get("aadt_w")),
+            "iri_w": replace_nan(row.get("iri_w")),
+            "machine_rental_cost": replace_nan(row.get("machine_rental_cost"))
+        },
+        "quantities": quantities
+    }
+
+@app.get("/api/config", tags=["Granular API"], summary="ดึงโครงสร้าง Parameter Grid ระดับประเทศ")
+def get_global_config():
+    lookup = damage_lookup("data")
+    param_grid = []
+    for cfg in WORKLOAD_CONFIG:
+        p, unit_cost = get_dynamic_unit_cost_and_probability(cfg, lookup, data_dir="data")
+        param_grid.append({
+            "workload_item": cfg.get("item", ""),
+            "category": cfg.get("category", ""),
+            "quantity_col": cfg.get("quantity_col", ""),
+            "unit": cfg.get("unit", ""),
+            "damage_probability": float(p) if not math.isnan(p) else 0.0,
+            "unit_cost": float(unit_cost) if not math.isnan(unit_cost) else 0.0,
+            "apply_damage_probability": bool(cfg.get("apply_damage_probability", True)),
+            "note": cfg.get("note", ""),
+            "condition_profile": cfg.get("condition_profile", "none"),
+            "damage_key": cfg.get("damage_key")
+        })
+    return {"param_grid": replace_nan(param_grid)}
 
 @app.post("/api/calculate")
 def calculate_workload(req: CalculateRequest):
@@ -169,6 +237,57 @@ def calculate_workload(req: CalculateRequest):
         ]].to_dict(orient="records")
     }
 
+    return replace_nan(res)
+
+class SingleCalculateRequest(BaseModel):
+    max_factor_uplift: float = Field(0.15, description="เพดานสูงสุดของ Scaling Factor (Condition Index)")
+    use_damage_probability: bool = Field(True, description="เปิด/ปิดการคูณ Damage Probability")
+    workload_overrides: Optional[Dict[str, Any]] = Field(None, description="Map ของคอลัมน์ปริมาณงานที่ถูก Override ค่าความน่าจะเป็นและราคากลาง")
+    quantity_updates: Optional[Dict[str, float]] = Field(None, description="Map ของคอลัมน์ปริมาณงานที่ถูกกรอกแก้ไขตัวเลขใหม่")
+    custom_config: Optional[list] = Field(None, description="โครงสร้าง Parameter Grid ที่ถูกเพิ่ม/ลด/แก้ไข จากหน้าบ้าน")
+
+@app.post("/api/calculate/{dept3}", tags=["Granular API"], summary="ทดสอบคำนวณงบประมาณเฉพาะแขวงที่ระบุ")
+def calculate_single_district(dept3: int, req: SingleCalculateRequest):
+    master = get_master_data()
+    mask = master["dept3"].astype(int) == dept3
+    if not any(mask):
+        return {"error": "District not found"}
+        
+    workload_overrides = req.workload_overrides or {}
+    quantity_updates = req.quantity_updates or {}
+    
+    revised_master = master.copy()
+    for q_col, val in quantity_updates.items():
+        if q_col in revised_master.columns:
+            revised_master.loc[mask, q_col] = val
+
+    revised_summary, revised_detail, revised_master_scored = build_results(
+        revised_master, "data", req.max_factor_uplift, req.use_damage_probability, workload_overrides, custom_config=req.custom_config
+    )
+
+    revised_one = revised_summary[revised_summary["dept3"].astype(int) == dept3].iloc[0]
+    
+    detail_cols = [
+        "workload_item", "category", "quantity", "unit", "damage_probability", 
+        "unit_cost", "apply_damage_probability", "base_workload_cost", 
+        "condition_profile", "factor_index_0_1", "factor_cost", "workload_plus_factor", "note"
+    ]
+    detail_cols = [c for c in detail_cols if c in revised_detail.columns]
+    revised_detail_one = revised_detail[revised_detail["dept3"].astype(int) == dept3][detail_cols]
+
+    res = {
+        "dept3": dept3,
+        "district_name": revised_one.get("district_name"),
+        "total_budget_model": float(revised_one["total_budget_model"]),
+        "breakdown": [
+            {"component": "Base Workload", "cost": float(revised_one["base_workload_cost"])},
+            {"component": "Factor", "cost": float(revised_one["factor_cost"])},
+            {"component": "Fixed Cost: ค่าเช่าเครื่องจักร", "cost": float(revised_one["machine_rental_cost"])},
+            {"component": "Fixed Cost: งานตัดหญ้า", "cost": float(revised_one["grass_cost_estimate"])},
+        ],
+        "workload_detail": revised_detail_one.to_dict(orient="records")
+    }
+    
     return replace_nan(res)
 
 if __name__ == "__main__":
