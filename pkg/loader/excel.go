@@ -2,7 +2,6 @@ package loader
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
 	"strconv"
 

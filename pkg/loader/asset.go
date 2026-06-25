@@ -120,7 +120,7 @@ func LoadPavement(dataDir string) (map[int]models.PavementQuantities, error) {
 	}
 	defer f.Close()
 
-	rows, err := f.GetRows("Sheet1") // Assuming data is in Sheet1
+	rows, err := f.GetRows("Summary") // Assuming data is in Summary
 	if err != nil || len(rows) < 2 {
 		return nil, fmt.Errorf("failed to read operating_distances or no data: %v", err)
 	}

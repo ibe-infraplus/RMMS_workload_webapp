@@ -70,7 +70,8 @@ function App() {
         quantity_updates: quantityUpdates,
         custom_config: currentConfig
       }).then(res => {
-        setResults(res.data);
+        const data = res.data;
+        setResults(data);
         setCalculating(false);
       }).catch(err => {
         console.error(err);

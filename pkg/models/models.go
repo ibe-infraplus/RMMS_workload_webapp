@@ -96,16 +96,44 @@ type DetailResult struct {
 	FinalCost            float64 `json:"final_cost"`
 }
 
+type Metrics struct {
+	BaselineTotal    float64 `json:"baseline_total"`
+	RevisedTotal     float64 `json:"revised_total"`
+	NationalBaseline float64 `json:"national_baseline"`
+	NationalRevised  float64 `json:"national_revised"`
+}
+
+type ChartDataItem struct {
+	Dept3            int     `json:"dept3"`
+	DistrictName     string  `json:"district_name"`
+	TotalBudgetModel float64 `json:"total_budget_model"`
+}
+
+type ChartData struct {
+	AllDistrictsBaseline []ChartDataItem `json:"all_districts_baseline"`
+	AllDistrictsRevised  []ChartDataItem `json:"all_districts_revised"`
+}
+
+type BreakdownItem struct {
+	Component string  `json:"component"`
+	Baseline  float64 `json:"baseline"`
+	Revised   float64 `json:"revised"`
+}
+
 // CalculationResult is the response payload for /api/calculate.
 type CalculationResult struct {
-	Dept3                     int            `json:"dept3"`
-	BaseWorkloadCostTotal     float64        `json:"base_workload_cost_total"`
-	ConditionFactorCostTotal  float64        `json:"condition_factor_cost_total"`
-	FinalCostTotal            float64        `json:"final_cost_total"`
-	PavementBaseCostTotal     float64        `json:"pavement_base_cost_total"`
-	PavementFactorCostTotal   float64        `json:"pavement_factor_cost_total"`
-	PavementFinalCostTotal    float64        `json:"pavement_final_cost_total"`
-	TotalGrandFinalCost       float64        `json:"total_grand_final_cost"`
-	CostScalingIndex          float64        `json:"cost_scaling_index"`
-	Details                   []DetailResult `json:"details"`
+	Dept3                     int                `json:"dept3"`
+	BaseWorkloadCostTotal     float64            `json:"base_workload_cost_total"`
+	ConditionFactorCostTotal  float64            `json:"condition_factor_cost_total"`
+	FinalCostTotal            float64            `json:"final_cost_total"`
+	PavementBaseCostTotal     float64            `json:"pavement_base_cost_total"`
+	PavementFactorCostTotal   float64            `json:"pavement_factor_cost_total"`
+	PavementFinalCostTotal    float64            `json:"pavement_final_cost_total"`
+	TotalGrandFinalCost       float64            `json:"total_grand_final_cost"`
+	CostScalingIndex          float64            `json:"cost_scaling_index"`
+	Details                   []DetailResult     `json:"details"`
+	Metrics                   Metrics            `json:"metrics"`
+	ChartData                 ChartData          `json:"chart_data"`
+	Breakdown                 []BreakdownItem    `json:"breakdown"`
+	DefaultQuantities         map[string]float64 `json:"default_quantities"`
 }
