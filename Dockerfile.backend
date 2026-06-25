@@ -1,16 +1,33 @@
-FROM python:3.11-slim
+# Stage 1: Build the Go binary
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy go mod and sum files
+COPY go.mod go.sum ./
 
-# Copy application files
-COPY main.py .
-COPY src/ src/
+# Download dependencies
+RUN go mod download
+
+# Copy the source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o backend_app main.go
+
+# Stage 2: Run the binary in a minimal image
+FROM alpine:latest
+
+WORKDIR /app
+
+# Copy the pre-built binary from the builder stage
+COPY --from=builder /app/backend_app .
+
+# Copy the data directory so the app can load excel files
 COPY data/ data/
 
+# Expose the API port
 EXPOSE 8001
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+# Run the binary
+CMD ["./backend_app"]
