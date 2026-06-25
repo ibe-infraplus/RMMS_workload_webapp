@@ -4,7 +4,6 @@ import { Map } from 'lucide-react';
 import './App.css';
 
 // Components
-import Sidebar from './components/Sidebar';
 import ParameterModal from './components/ParameterModal';
 import QuantityInputs from './components/QuantityInputs';
 import Metrics from './components/Metrics';
@@ -101,18 +100,35 @@ function App() {
 
   return (
     <div className="app-container">
-      <Sidebar 
-        useDamageProbability={useDamageProbability}
-        setUseDamageProbability={setUseDamageProbability}
-        maxFactorUplift={maxFactorUplift}
-        setMaxFactorUplift={setMaxFactorUplift}
-        setIsParamModalOpen={setIsParamModalOpen}
-      />
-
       <div className="main-content">
         <h1><Map style={{display: 'inline', verticalAlign: 'middle', marginRight: '12px', marginBottom: '4px'}}/> ระบบคำนวณงบประมาณ (Workload Cost)</h1>
         <p>แพลตฟอร์มปรับแก้ปริมาณงานและตัวแปรเพื่อจำลองผลกระทบต่องบประมาณแบบ Real-time</p>
         
+        <div className="settings-panel" style={{marginTop: '24px', marginBottom: '24px', padding: '20px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'center'}}>
+          <div className="form-group" style={{marginBottom: 0, minWidth: '180px'}}>
+            <label>Use Damage Probability</label>
+            <select value={useDamageProbability ? 'On' : 'Off'} onChange={e => setUseDamageProbability(e.target.value === 'On')}>
+              <option value="On">On</option>
+              <option value="Off">Off</option>
+            </select>
+          </div>
+
+          <div className="form-group" style={{marginBottom: 0, minWidth: '220px'}}>
+            <label>Max Factor Uplift ({maxFactorUplift.toFixed(2)})</label>
+            <input 
+              type="range" min="0" max="0.5" step="0.01" 
+              value={maxFactorUplift} 
+              onChange={e => setMaxFactorUplift(parseFloat(e.target.value))} 
+            />
+          </div>
+
+          <div style={{marginLeft: 'auto'}}>
+            <button className="btn" onClick={() => setIsParamModalOpen(true)}>
+               ตั้งค่า Workload Parameter Grid
+            </button>
+          </div>
+        </div>
+
         <div className="divider"></div>
 
         <h2>เลือกพื้นที่ดำเนินการ (แขวงทางหลวง)</h2>
