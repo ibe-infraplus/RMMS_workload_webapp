@@ -1,6 +1,7 @@
 from pathlib import Path
 import numpy as np
 import pandas as pd
+from functools import lru_cache
 
 from .config import DATA_DIR, FILES, TARGET_YEAR
 
@@ -32,6 +33,7 @@ def first3_code(s):
     )
 
 
+@lru_cache(maxsize=1)
 def load_damage(data_dir=None):
     raw = pd.read_excel(file_path("damage", data_dir))
     c0, c1 = raw.columns[:2]
@@ -305,6 +307,7 @@ def load_rmms_unit_cost_by_workcode(data_dir=None, target_year=TARGET_YEAR):
     ]
 
 
+@lru_cache(maxsize=1)
 def build_pavement_unit_cost_from_rmms(data_dir=None, target_year=TARGET_YEAR):
     """
     คำนวณ unit cost และ damage probability สำหรับ workload:

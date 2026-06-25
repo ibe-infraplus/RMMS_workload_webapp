@@ -53,7 +53,7 @@ function App() {
       setLoadingInit(false);
     }).catch(err => {
       console.error(err);
-      alert("Failed to connect to backend API. Is FastAPI running on port 8000?");
+      alert("Failed to connect to backend API. Is FastAPI running on port 8001?");
     });
   }, []);
 
@@ -61,20 +61,25 @@ function App() {
     if (!selectedDept3 || !initData) return;
     
     setCalculating(true);
-    axios.post(`${API_BASE}/calculate`, {
-      selected_dept3: selectedDept3,
-      max_factor_uplift: maxFactorUplift,
-      use_damage_probability: useDamageProbability,
-      workload_overrides: workloadOverrides,
-      quantity_updates: quantityUpdates,
-      custom_config: currentConfig
-    }).then(res => {
-      setResults(res.data);
-      setCalculating(false);
-    }).catch(err => {
-      console.error(err);
-      setCalculating(false);
-    });
+    
+    const timeoutId = setTimeout(() => {
+      axios.post(`${API_BASE}/calculate`, {
+        selected_dept3: selectedDept3,
+        max_factor_uplift: maxFactorUplift,
+        use_damage_probability: useDamageProbability,
+        workload_overrides: workloadOverrides,
+        quantity_updates: quantityUpdates,
+        custom_config: currentConfig
+      }).then(res => {
+        setResults(res.data);
+        setCalculating(false);
+      }).catch(err => {
+        console.error(err);
+        setCalculating(false);
+      });
+    }, 500); // 500ms Debounce
+
+    return () => clearTimeout(timeoutId);
   }, [selectedDept3, maxFactorUplift, useDamageProbability, workloadOverrides, quantityUpdates, currentConfig]);
 
   if (loadingInit) {

@@ -7,7 +7,7 @@ The application is split into a **FastAPI backend** and a **Vite + React fronten
 - **Docker** and **Docker Compose** installed on your server or local machine.
 
 ## Architecture
-- **Backend (`workload_backend`)**: A Python container running FastAPI via Uvicorn on internal port `8000`.
+- **Backend (`workload_backend`)**: A Python container running FastAPI via Uvicorn on internal port `8001`.
 - **Frontend (`workload_frontend`)**: An Nginx container that serves the compiled static React files on port `80` and proxies any requests starting with `/api` to the backend container.
 
 ## 🚀 How to Deploy

@@ -1,5 +1,5 @@
 import math
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import pandas as pd
 import numpy as np
 from fastapi import FastAPI
@@ -101,7 +101,7 @@ class CalculateRequest(BaseModel):
     use_damage_probability: bool = Field(True, description="เปิด/ปิดการคูณ Damage Probability")
     workload_overrides: Dict[str, Any] = Field(..., description="Map ของคอลัมน์ปริมาณงานที่ถูก Override ค่าความน่าจะเป็นและราคากลาง")
     quantity_updates: Dict[str, float] = Field(..., description="Map ของคอลัมน์ปริมาณงานที่ถูกกรอกแก้ไขตัวเลขใหม่")
-    custom_config: Optional[list] = Field(None, description="โครงสร้าง Parameter Grid ที่ถูกเพิ่ม/ลด/แก้ไข จากหน้าบ้าน")
+    custom_config: Optional[List[Dict[str, Any]]] = Field(None, description="โครงสร้าง Parameter Grid ที่ถูกเพิ่ม/ลด/แก้ไข จากหน้าบ้าน")
 
 @app.get("/api/districts", tags=["Granular API"], summary="ดึงรายชื่อแขวงทางหลวงทั้งหมด")
 def get_all_districts():
@@ -244,7 +244,7 @@ class SingleCalculateRequest(BaseModel):
     use_damage_probability: bool = Field(True, description="เปิด/ปิดการคูณ Damage Probability")
     workload_overrides: Optional[Dict[str, Any]] = Field(None, description="Map ของคอลัมน์ปริมาณงานที่ถูก Override ค่าความน่าจะเป็นและราคากลาง")
     quantity_updates: Optional[Dict[str, float]] = Field(None, description="Map ของคอลัมน์ปริมาณงานที่ถูกกรอกแก้ไขตัวเลขใหม่")
-    custom_config: Optional[list] = Field(None, description="โครงสร้าง Parameter Grid ที่ถูกเพิ่ม/ลด/แก้ไข จากหน้าบ้าน")
+    custom_config: Optional[List[Dict[str, Any]]] = Field(None, description="โครงสร้าง Parameter Grid ที่ถูกเพิ่ม/ลด/แก้ไข จากหน้าบ้าน")
 
 @app.post("/api/calculate/{dept3}", tags=["Granular API"], summary="ทดสอบคำนวณงบประมาณเฉพาะแขวงที่ระบุ")
 def calculate_single_district(dept3: int, req: SingleCalculateRequest):
@@ -292,4 +292,4 @@ def calculate_single_district(dept3: int, req: SingleCalculateRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

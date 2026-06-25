@@ -26,7 +26,7 @@ To run the application manually, you need to start both the FastAPI backend and 
 ```bash
 # From the root directory (where main.py is)
 pip install -r requirements.txt
-python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 ```
 
 **Terminal 2: Start the Frontend**

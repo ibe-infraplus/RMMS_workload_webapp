@@ -14,6 +14,19 @@ export default function ParameterModal({
     const updatedConfig = [...currentConfig];
     updatedConfig[idx] = { ...updatedConfig[idx], [field]: value };
     setCurrentConfig(updatedConfig);
+    
+    // Also update workloadOverrides so the backend respects the change
+    setWorkloadOverrides(prev => {
+      const qCol = updatedConfig[idx].quantity_col;
+      if (!qCol) return prev;
+      return {
+        ...prev,
+        [qCol]: {
+          ...prev[qCol],
+          [field]: value
+        }
+      };
+    });
   };
 
   const handleAddParameter = (category) => {
