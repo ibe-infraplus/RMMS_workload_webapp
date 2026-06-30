@@ -1,6 +1,7 @@
 from pathlib import Path
 import numpy as np
 import pandas as pd
+import re
 
 from .config import DATA_DIR, FILES, TARGET_YEAR
 
@@ -142,6 +143,30 @@ def load_operating_distances(data_dir=None):
 
 def build_master(data_dir=None):
     group = load_district_base(data_dir)
+    
+    # Load bridge data and clean keys for merging
+    try:
+        bridge_df = pd.read_excel(file_path("bridge_bmms", data_dir))
+        bridge_df["ความยาวสะพาน (ม.)"] = pd.to_numeric(bridge_df["ความยาวสะพาน (ม.)"], errors="coerce")
+        bridge_grouped = bridge_df.groupby("แขวงการทาง")["ความยาวสะพาน (ม.)"].sum().reset_index()
+        bridge_grouped.columns = ["district_name_bridge", "bridge_m"]
+
+        def clean_name(name):
+            if pd.isna(name): return name
+            name = str(name)
+            name = re.sub(r'\(.*?\)', '', name)
+            name = name.replace(' ', '')
+            name = name.replace('ขท.', 'แขวงทางหลวง')
+            return name
+
+        group["clean_key"] = group["district_name"].apply(clean_name)
+        bridge_grouped["clean_key"] = bridge_grouped["district_name_bridge"].apply(clean_name)
+        group = group.merge(bridge_grouped[["clean_key", "bridge_m"]], on="clean_key", how="left")
+        group = group.drop(columns=["clean_key"])
+    except Exception as e:
+        print(f"Warning: Could not load bridge_bmms.xlsx: {e}")
+        group["bridge_m"] = 0.0
+
     asset = load_asset_quantities(data_dir)
     input_extra = load_input_extras(data_dir)
     op_dist = load_operating_distances(data_dir)
