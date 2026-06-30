@@ -181,6 +181,7 @@ with st.sidebar:
         max_value=0.50,
         value=float(MAX_FACTOR_UPLIFT),
         step=0.01,
+        help="Max Factor Uplift คือ เพดานสูงสุดของการเพิ่มงบประมาณที่คำนวณจากปัจจัยแวดล้อม เช่น ปริมาณจราจร สภาพพื้นที่ ฯลฯ โดยจะนำไปคูณกับ Base Cost เพื่อเพิ่มงบให้สอดคล้องกับความยากง่ายของพื้นที่"
     )
     st.markdown("**Workload Parameter Grid**")
     param_df = build_workload_parameter_table(data_dir)
