@@ -159,16 +159,18 @@ def get_warranty_distances(data_dir=None):
             with open(file, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 for item in data:
-                    dis_name = item.get('dis_name')
-                    if dis_name:
+                    dis_code = item.get('dis_code')
+                    if dis_code is not None:
+                        # Ensure dis_code is integer for joining
+                        dis_code_int = int(dis_code)
                         tasks = item.get('Plan_tasks', [])
                         dist_sum = sum(task.get('distance', 0) for task in tasks)
-                        warranty_dict[dis_name] += dist_sum
+                        warranty_dict[dis_code_int] += dist_sum
         except Exception as e:
             print(f"Warning: Failed to parse {file}: {e}")
             
     df = pd.DataFrame({
-        "district_name_warranty": list(warranty_dict.keys()),
+        "warranty_depot_code": list(warranty_dict.keys()),
         "warranty_distance": list(warranty_dict.values())
     })
     return df
@@ -196,17 +198,17 @@ def build_master(data_dir=None):
         bridge_grouped["clean_key"] = bridge_grouped["district_name_bridge"].apply(clean_name)
         group = group.merge(bridge_grouped[["clean_key", "bridge_m"]], on="clean_key", how="left")
         
-        # Merge warranty distance
+        # Merge warranty distance by depot_code
         warranty_df = get_warranty_distances(data_dir)
-        warranty_df["clean_key"] = warranty_df["district_name_warranty"].apply(clean_name)
-        group = group.merge(warranty_df[["clean_key", "warranty_distance"]], on="clean_key", how="left")
+        group["join_depot_code"] = pd.to_numeric(group["depot_code"], errors="coerce").fillna(-1).astype(int)
+        group = group.merge(warranty_df, left_on="join_depot_code", right_on="warranty_depot_code", how="left")
         group["warranty_distance"] = group["warranty_distance"].fillna(0)
         
         # Subtract warranty from length_to2 and cap at 0
         if "length_to2" in group.columns:
             group["length_to2"] = (group["length_to2"] - group["warranty_distance"]).clip(lower=0)
             
-        group = group.drop(columns=["clean_key"])
+        group = group.drop(columns=["clean_key", "join_depot_code", "warranty_depot_code"], errors="ignore")
     except Exception as e:
         print(f"Warning: Could not load bridge_bmms.xlsx or warranty data: {e}")
         group["bridge_m"] = 0.0
