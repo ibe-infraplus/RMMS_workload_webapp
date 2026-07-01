@@ -105,7 +105,7 @@ def show_budget_donut_chart(df_summary: pd.DataFrame):
 
 
 @st.cache_data(show_spinner="กำลังอ่านไฟล์ Excel จาก folder data...")
-def load_all(data_dir: str):
+def load_all(data_dir: str, cache_buster: int = 1):
     return build_master(data_dir)
 
 
@@ -235,7 +235,7 @@ Total Budget:
 # =========================================================
 
 try:
-    master = load_all(data_dir)
+    master = load_all(data_dir, cache_buster=2)
 except Exception as e:
     st.error(str(e))
     st.stop()
