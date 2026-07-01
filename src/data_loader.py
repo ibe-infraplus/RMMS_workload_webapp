@@ -2,6 +2,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import re
+import json
+import glob
 
 from .config import DATA_DIR, FILES, TARGET_YEAR
 
@@ -141,6 +143,36 @@ def load_operating_distances(data_dir=None):
     return df.groupby("dept3", as_index=False)["total_distance_km"].sum().rename(columns={"total_distance_km": "operating_distance"})
 
 
+def get_warranty_distances(data_dir=None):
+    from collections import defaultdict
+    import json
+    import glob
+    import os
+    
+    base_path = resolve_data_dir(data_dir)
+    pattern = os.path.join(base_path, "response*.json")
+    files = glob.glob(pattern)
+    
+    warranty_dict = defaultdict(float)
+    for file in files:
+        try:
+            with open(file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                for item in data:
+                    dis_name = item.get('dis_name')
+                    if dis_name:
+                        tasks = item.get('Plan_tasks', [])
+                        dist_sum = sum(task.get('distance', 0) for task in tasks)
+                        warranty_dict[dis_name] += dist_sum
+        except Exception as e:
+            print(f"Warning: Failed to parse {file}: {e}")
+            
+    df = pd.DataFrame({
+        "district_name_warranty": list(warranty_dict.keys()),
+        "warranty_distance": list(warranty_dict.values())
+    })
+    return df
+
 def build_master(data_dir=None):
     group = load_district_base(data_dir)
     
@@ -156,16 +188,30 @@ def build_master(data_dir=None):
             name = str(name)
             name = re.sub(r'\(.*?\)', '', name)
             name = name.replace(' ', '')
-            name = name.replace('ขท.', 'แขวงทางหลวง')
+            name = name.replace('ขท.', '')
+            name = name.replace('แขวงทางหลวง', '')
             return name
 
         group["clean_key"] = group["district_name"].apply(clean_name)
         bridge_grouped["clean_key"] = bridge_grouped["district_name_bridge"].apply(clean_name)
         group = group.merge(bridge_grouped[["clean_key", "bridge_m"]], on="clean_key", how="left")
+        
+        # Merge warranty distance
+        warranty_df = get_warranty_distances(data_dir)
+        warranty_df["clean_key"] = warranty_df["district_name_warranty"].apply(clean_name)
+        group = group.merge(warranty_df[["clean_key", "warranty_distance"]], on="clean_key", how="left")
+        group["warranty_distance"] = group["warranty_distance"].fillna(0)
+        
+        # Subtract warranty from length_to2 and cap at 0
+        if "length_to2" in group.columns:
+            group["length_to2"] = (group["length_to2"] - group["warranty_distance"]).clip(lower=0)
+            
         group = group.drop(columns=["clean_key"])
     except Exception as e:
-        print(f"Warning: Could not load bridge_bmms.xlsx: {e}")
+        print(f"Warning: Could not load bridge_bmms.xlsx or warranty data: {e}")
         group["bridge_m"] = 0.0
+        if "warranty_distance" not in group.columns:
+            group["warranty_distance"] = 0.0
 
     asset = load_asset_quantities(data_dir)
     input_extra = load_input_extras(data_dir)
