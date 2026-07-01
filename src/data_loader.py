@@ -146,16 +146,42 @@ def load_operating_distances(data_dir=None):
 def get_warranty_distances(data_dir=None):
     """
     ดึงข้อมูลระยะทางติดค้ำประกันจาก API สำหรับปี 2567, 2568, 2569
+    โดยมีระบบ Cache ลงไฟล์ (api_warranty_cache.json) มีอายุ 24 ชั่วโมง เพื่อลดการเรียก API ซ้ำ
     """
     import requests
     from collections import defaultdict
     import pandas as pd
+    import json
+    import os
+    import time
 
+    base_path = resolve_data_dir(data_dir)
+    cache_file = os.path.join(base_path, "api_warranty_cache.json")
+    cache_ttl = 86400  # 24 hours
+
+    warranty_dict = defaultdict(float)
+
+    # 1. Try loading from cache
+    if os.path.exists(cache_file):
+        try:
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                cache_data = json.load(f)
+                if time.time() - cache_data.get('timestamp', 0) < cache_ttl:
+                    warranty_dict.update(cache_data.get('warranty_dict', {}))
+                    # Convert string keys back to int
+                    warranty_dict = {int(k): v for k, v in warranty_dict.items()}
+                    df = pd.DataFrame({
+                        "warranty_depot_code": list(warranty_dict.keys()),
+                        "warranty_distance": list(warranty_dict.values())
+                    })
+                    return df
+        except Exception as e:
+            print(f"Warning: Failed to read cache: {e}")
+
+    # 2. If no valid cache, fetch from API
     years = [2567, 2568, 2569]
     token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImN0eSI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6InRwbXMiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJ0cG1zIiwiZXhwIjoxODc2NjcyODc2LCJpc3MiOiJQbGFuTkVUIERPSCIsImF1ZCI6IlBsYW5ORVQifQ._5a68J1GpfxkOPkn7yPMDcR3r6KQrSeedhCrN4JIgNI"
     headers = {'Authorization': f'Bearer {token}'}
-    
-    warranty_dict = defaultdict(float)
     
     for year in years:
         url = f"https://plannet.doh.go.th/PN2021API/PlanData/getTPMSActionPlan/{year}"
@@ -172,6 +198,16 @@ def get_warranty_distances(data_dir=None):
                     warranty_dict[dis_code_int] += dist_sum
         except Exception as e:
             print(f"Warning: Failed to fetch API for year {year}: {e}")
+
+    # 3. Save to cache
+    try:
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            json.dump({
+                "timestamp": time.time(),
+                "warranty_dict": warranty_dict
+            }, f, ensure_ascii=False)
+    except Exception as e:
+        print(f"Warning: Failed to write cache: {e}")
             
     df = pd.DataFrame({
         "warranty_depot_code": list(warranty_dict.keys()),
