@@ -1,7 +1,6 @@
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from functools import lru_cache
 import re
 import json
 import glob
@@ -36,7 +35,6 @@ def first3_code(s):
     )
 
 
-@lru_cache(maxsize=1)
 def load_damage(data_dir=None):
     raw = pd.read_excel(file_path("damage", data_dir))
     c0, c1 = raw.columns[:2]
@@ -146,30 +144,34 @@ def load_operating_distances(data_dir=None):
 
 
 def get_warranty_distances(data_dir=None):
+    """
+    ดึงข้อมูลระยะทางติดค้ำประกันจาก API สำหรับปี 2567, 2568, 2569
+    """
+    import requests
     from collections import defaultdict
-    import json
-    import glob
-    import os
-    
-    base_path = resolve_data_dir(data_dir)
-    pattern = os.path.join(base_path, "response*.json")
-    files = glob.glob(pattern)
+    import pandas as pd
+
+    years = [2567, 2568, 2569]
+    token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImN0eSI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6InRwbXMiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJ0cG1zIiwiZXhwIjoxODc2NjcyODc2LCJpc3MiOiJQbGFuTkVUIERPSCIsImF1ZCI6IlBsYW5ORVQifQ._5a68J1GpfxkOPkn7yPMDcR3r6KQrSeedhCrN4JIgNI"
+    headers = {'Authorization': f'Bearer {token}'}
     
     warranty_dict = defaultdict(float)
-    for file in files:
+    
+    for year in years:
+        url = f"https://plannet.doh.go.th/PN2021API/PlanData/getTPMSActionPlan/{year}"
         try:
-            with open(file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                for item in data:
-                    dis_code = item.get('dis_code')
-                    if dis_code is not None:
-                        # Ensure dis_code is integer for joining
-                        dis_code_int = int(dis_code)
-                        tasks = item.get('Plan_tasks', [])
-                        dist_sum = sum(task.get('distance', 0) for task in tasks)
-                        warranty_dict[dis_code_int] += dist_sum
+            res = requests.get(url, headers=headers, timeout=30)
+            res.raise_for_status()
+            data = res.json()
+            for item in data:
+                dis_code = item.get('dis_code')
+                if dis_code is not None:
+                    dis_code_int = int(dis_code)
+                    tasks = item.get('Plan_tasks', [])
+                    dist_sum = sum(task.get('distance', 0) for task in tasks)
+                    warranty_dict[dis_code_int] += dist_sum
         except Exception as e:
-            print(f"Warning: Failed to parse {file}: {e}")
+            print(f"Warning: Failed to fetch API for year {year}: {e}")
             
     df = pd.DataFrame({
         "warranty_depot_code": list(warranty_dict.keys()),
@@ -177,30 +179,43 @@ def get_warranty_distances(data_dir=None):
     })
     return df
 
-
 def build_master(data_dir=None):
     group = load_district_base(data_dir)
     
-    def clean_name(name):
-        if pd.isna(name): return name
-        name = str(name)
-        name = re.sub(r'\(.*?\)', '', name)
-        name = name.replace(' ', '')
-        name = name.replace('ขท.', '')
-        name = name.replace('แขวงทางหลวง', '')
-        return name
-
+    # Load bridge data and clean keys for merging
     try:
+        bridge_df = pd.read_excel(file_path("bridge_bmms", data_dir))
+        bridge_df["ความยาวสะพาน (ม.)"] = pd.to_numeric(bridge_df["ความยาวสะพาน (ม.)"], errors="coerce")
+        bridge_grouped = bridge_df.groupby("แขวงการทาง")["ความยาวสะพาน (ม.)"].sum().reset_index()
+        bridge_grouped.columns = ["district_name_bridge", "bridge_m"]
+
+        def clean_name(name):
+            if pd.isna(name): return name
+            name = str(name)
+            name = re.sub(r'\(.*?\)', '', name)
+            name = name.replace(' ', '')
+            name = name.replace('ขท.', '')
+            name = name.replace('แขวงทางหลวง', '')
+            return name
+
         group["clean_key"] = group["district_name"].apply(clean_name)
+        bridge_grouped["clean_key"] = bridge_grouped["district_name_bridge"].apply(clean_name)
+        group = group.merge(bridge_grouped[["clean_key", "bridge_m"]], on="clean_key", how="left")
+        
+        # Merge warranty distance by depot_code
         warranty_df = get_warranty_distances(data_dir)
         group["join_depot_code"] = pd.to_numeric(group["depot_code"], errors="coerce").fillna(-1).astype(int)
         group = group.merge(warranty_df, left_on="join_depot_code", right_on="warranty_depot_code", how="left")
         group["warranty_distance"] = group["warranty_distance"].fillna(0)
+        
+        # Subtract warranty from length_to2 and cap at 0
         if "length_to2" in group.columns:
             group["length_to2"] = (group["length_to2"] - group["warranty_distance"]).clip(lower=0)
+            
         group = group.drop(columns=["clean_key", "join_depot_code", "warranty_depot_code"], errors="ignore")
     except Exception as e:
-        print(f"Warning: Could not load warranty data: {e}")
+        print(f"Warning: Could not load bridge_bmms.xlsx or warranty data: {e}")
+        group["bridge_m"] = 0.0
         if "warranty_distance" not in group.columns:
             group["warranty_distance"] = 0.0
 
@@ -234,11 +249,6 @@ def build_master(data_dir=None):
 
     for col in master.select_dtypes(include=["number"]).columns:
         master[col] = master[col].fillna(0)
-
-    try:
-        master.to_excel(resolve_data_dir(data_dir) / "master_final.xlsx", index=False)
-    except Exception as e:
-        print(f"Warning: Could not save master_final.xlsx: {e}")
 
     return master
 
@@ -367,7 +377,6 @@ def load_rmms_unit_cost_by_workcode(data_dir=None, target_year=TARGET_YEAR):
     ]
 
 
-@lru_cache(maxsize=1)
 def build_pavement_unit_cost_from_rmms(data_dir=None, target_year=TARGET_YEAR):
     """
     คำนวณ unit cost และ damage probability สำหรับ workload:
