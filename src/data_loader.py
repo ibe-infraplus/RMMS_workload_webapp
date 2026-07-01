@@ -144,30 +144,34 @@ def load_operating_distances(data_dir=None):
 
 
 def get_warranty_distances(data_dir=None):
+    """
+    ดึงข้อมูลระยะทางติดค้ำประกันจาก API สำหรับปี 2567, 2568, 2569
+    """
+    import requests
     from collections import defaultdict
-    import json
-    import glob
-    import os
-    
-    base_path = resolve_data_dir(data_dir)
-    pattern = os.path.join(base_path, "response*.json")
-    files = glob.glob(pattern)
+    import pandas as pd
+
+    years = [2567, 2568, 2569]
+    token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImN0eSI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6InRwbXMiLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJ0cG1zIiwiZXhwIjoxODc2NjcyODc2LCJpc3MiOiJQbGFuTkVUIERPSCIsImF1ZCI6IlBsYW5ORVQifQ._5a68J1GpfxkOPkn7yPMDcR3r6KQrSeedhCrN4JIgNI"
+    headers = {'Authorization': f'Bearer {token}'}
     
     warranty_dict = defaultdict(float)
-    for file in files:
+    
+    for year in years:
+        url = f"https://plannet.doh.go.th/PN2021API/PlanData/getTPMSActionPlan/{year}"
         try:
-            with open(file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                for item in data:
-                    dis_code = item.get('dis_code')
-                    if dis_code is not None:
-                        # Ensure dis_code is integer for joining
-                        dis_code_int = int(dis_code)
-                        tasks = item.get('Plan_tasks', [])
-                        dist_sum = sum(task.get('distance', 0) for task in tasks)
-                        warranty_dict[dis_code_int] += dist_sum
+            res = requests.get(url, headers=headers, timeout=30)
+            res.raise_for_status()
+            data = res.json()
+            for item in data:
+                dis_code = item.get('dis_code')
+                if dis_code is not None:
+                    dis_code_int = int(dis_code)
+                    tasks = item.get('Plan_tasks', [])
+                    dist_sum = sum(task.get('distance', 0) for task in tasks)
+                    warranty_dict[dis_code_int] += dist_sum
         except Exception as e:
-            print(f"Warning: Failed to parse {file}: {e}")
+            print(f"Warning: Failed to fetch API for year {year}: {e}")
             
     df = pd.DataFrame({
         "warranty_depot_code": list(warranty_dict.keys()),
