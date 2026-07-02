@@ -17,7 +17,7 @@ def add_condition_scores(master):
     veh = out["veh_total"] if "veh_total" in out else out.get("input_veh_total", 0)
     out["traffic_score"] = percentile_score(veh)
 
-    heavy_col = next((c for c in ["veh_truck", "truck_total", "heavy_truck", "truck_volume", "ปริมาณรถบรรทุกหนัก"] if c in out.columns), None)
+    heavy_col = next((c for c in ["truck_total", "heavy_truck", "truck_volume", "ปริมาณรถบรรทุกหนัก"] if c in out.columns), None)
     out["truck_score"] = percentile_score(out[heavy_col]) if heavy_col else out["traffic_score"] * 0.70
 
     elev_inputs = []
@@ -83,6 +83,7 @@ def compute_workload(
     use_damage_probability=True,
     workload_overrides=None,
     custom_config=None,
+    budget_multiplier=None,
 ):
     master = add_condition_scores(master)
     lookup = damage_lookup(data_dir)
@@ -95,11 +96,27 @@ def compute_workload(
     # Use custom_config if provided, else fallback to WORKLOAD_CONFIG
     config_to_use = custom_config if custom_config is not None else WORKLOAD_CONFIG
 
+    # Calculate dynamic unit costs and find the minimum non-zero unit cost
+    resolved_costs = []
+    for cfg in config_to_use:
+        p, unit_cost = get_dynamic_unit_cost_and_probability(cfg, lookup, data_dir=data_dir)
+        q_col = cfg.get("quantity_col", "")
+        ov = override_map.get(q_col, {}) if isinstance(override_map, dict) else {}
+        if isinstance(ov, dict) and "unit_cost" in ov and ov["unit_cost"] is not None:
+            unit_cost = float(ov["unit_cost"])
+        resolved_costs.append(unit_cost)
+    
+    non_zero_costs = [c for c in resolved_costs if c > 0]
+    min_unit_cost = min(non_zero_costs) if non_zero_costs else 1.0
+
+    if budget_multiplier is None:
+        budget_multiplier = min_unit_cost
+
     for cfg in config_to_use:
         q_col = cfg.get("quantity_col", "")
         q = pd.to_numeric(master[q_col], errors="coerce").fillna(0) if q_col and q_col in master.columns else pd.Series(0, index=master.index)
         p, unit_cost = get_dynamic_unit_cost_and_probability(cfg, lookup, data_dir=data_dir)
-        ov = override_map.get(q_col, {})
+        ov = override_map.get(q_col, {}) if isinstance(override_map, dict) else {}
         if isinstance(ov, dict):
             if "damage_probability" in ov and ov["damage_probability"] is not None:
                 p = float(ov["damage_probability"])
@@ -109,11 +126,21 @@ def compute_workload(
         else:
             apply_cfg = cfg.get("apply_damage_probability", True)
 
+        # 1. Base Value
+        base_value = float(unit_cost / min_unit_cost) if unit_cost > 0 else 0.0
+
+        # 2. Workload Unit
+        workload_unit = q * base_value
+
+        # 3. Workload Score
         apply_damage_probability = bool(apply_cfg) and bool(use_damage_probability)
         if apply_damage_probability:
-            base_cost = q * p * unit_cost
+            workload_score = workload_unit * p
         else:
-            base_cost = q * unit_cost
+            workload_score = workload_unit
+
+        # 4. Workload Cost (Base Cost in Baht)
+        base_cost = workload_score * budget_multiplier
 
         profile = cfg.get("condition_profile", "none")
         weights = FACTOR_PROFILES.get(profile, {})
@@ -129,13 +156,17 @@ def compute_workload(
                     "dept3": master["dept3"],
                     "division_name": master["division_name"],
                     "district_name": master["district_name"],
-                    "workload_item": cfg.get("item", cfg.get("workload_item", "")),
-                    "category": cfg.get("category", ""),
+                    "workload_item": cfg["item"],
+                    "category": cfg["category"],
                     "quantity": q,
-                    "unit": cfg.get("unit", ""),
+                    "unit": cfg["unit"],
                     "damage_probability": p,
                     "unit_cost": unit_cost,
                     "apply_damage_probability": apply_damage_probability,
+                    "base_value": base_value,
+                    "total_quantity": float(q.sum()),
+                    "workload_unit": workload_unit,
+                    "workload_score": workload_score,
                     "base_workload_cost": base_cost,
                     "condition_profile": profile,
                     "factor_index_0_1": factor_index,
@@ -172,6 +203,7 @@ def build_results(
     use_damage_probability=True,
     workload_overrides=None,
     custom_config=None,
+    budget_multiplier=None,
 ):
     details, master_scored = compute_workload(
         master,
@@ -180,12 +212,14 @@ def build_results(
         use_damage_probability=use_damage_probability,
         workload_overrides=workload_overrides,
         custom_config=custom_config,
+        budget_multiplier=budget_multiplier,
     )
     fixed = compute_fixed_cost(master_scored)
 
     summary = (
         details.groupby(["dept3", "division_name", "district_name"], as_index=False)
         .agg(
+            workload_score=("workload_score", "sum"),
             base_workload_cost=("base_workload_cost", "sum"),
             factor_cost=("factor_cost", "sum"),
             workload_plus_factor=("workload_plus_factor", "sum"),

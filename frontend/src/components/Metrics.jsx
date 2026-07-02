@@ -6,7 +6,7 @@ export default function Metrics({ results }) {
   return (
     <>
       <div className="divider"></div>
-      <h2>สรุปผลการคำนวณงบประมาณ</h2>
+      <h2>4) ผลคำนวณงบประมาณ (จากตัวคูณ X)</h2>
       
       <div className="metrics-grid">
         <div className="metric-card">

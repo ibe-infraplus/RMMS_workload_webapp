@@ -9,6 +9,8 @@ import QuantityInputs from './components/QuantityInputs';
 import Metrics from './components/Metrics';
 import Charts from './components/Charts';
 import DataTable from './components/DataTable';
+import WorkloadDetailTable from './components/WorkloadDetailTable';
+import SummaryAllDistrictsTable from './components/SummaryAllDistrictsTable';
 
 const API_BASE = '/api';
 
@@ -23,6 +25,7 @@ function App() {
   const [quantityUpdates, setQuantityUpdates] = useState({});
   const [workloadOverrides, setWorkloadOverrides] = useState({});
   const [currentConfig, setCurrentConfig] = useState([]);
+  const [budgetMultiplier, setBudgetMultiplier] = useState(100.0);
   
   // UI State
   const [isParamModalOpen, setIsParamModalOpen] = useState(false);
@@ -36,6 +39,7 @@ function App() {
       setInitData(res.data);
       setSelectedDept3(res.data.districts[0].dept3);
       setMaxFactorUplift(res.data.max_factor_uplift);
+      setBudgetMultiplier(res.data.default_budget_multiplier || 100.0);
       
       const overrides = {};
       res.data.param_grid.forEach(row => {
@@ -68,7 +72,8 @@ function App() {
         use_damage_probability: useDamageProbability,
         workload_overrides: workloadOverrides,
         quantity_updates: quantityUpdates,
-        custom_config: currentConfig
+        custom_config: currentConfig,
+        budget_multiplier: budgetMultiplier
       }).then(res => {
         setResults(res.data);
         setCalculating(false);
@@ -79,7 +84,7 @@ function App() {
     }, 500); // 500ms Debounce
 
     return () => clearTimeout(timeoutId);
-  }, [selectedDept3, maxFactorUplift, useDamageProbability, workloadOverrides, quantityUpdates, currentConfig]);
+  }, [selectedDept3, maxFactorUplift, useDamageProbability, workloadOverrides, quantityUpdates, currentConfig, budgetMultiplier]);
 
   if (loadingInit) {
     return (
@@ -152,9 +157,50 @@ function App() {
 
         {results && (
           <>
+            <div className="divider"></div>
+            <h2>3) ผลการคำนวณ Workload</h2>
+            <div className="metrics-grid">
+              <div className="metric-card">
+                <span className="metric-label">Baseline Workload Score</span>
+                <span className="metric-value">{Number(results.metrics.baseline_workload_score).toLocaleString(undefined, {maximumFractionDigits: 4})} คะแนน</span>
+              </div>
+              <div className="metric-card">
+                <span className="metric-label">Revised Workload Score</span>
+                <span className="metric-value">{Number(results.metrics.revised_workload_score).toLocaleString(undefined, {maximumFractionDigits: 4})} คะแนน</span>
+                <span className={`metric-delta ${results.metrics.revised_workload_score - results.metrics.baseline_workload_score > 0 ? 'positive' : 'negative'}`}>
+                  {(results.metrics.revised_workload_score - results.metrics.baseline_workload_score > 0 ? '+' : '')}
+                  {Number(results.metrics.revised_workload_score - results.metrics.baseline_workload_score).toLocaleString(undefined, {maximumFractionDigits: 4})} คะแนน
+                </span>
+              </div>
+              <div className="metric-card">
+                <span className="metric-label">National Baseline Workload</span>
+                <span className="metric-value">{Number(results.metrics.national_baseline_workload).toLocaleString(undefined, {maximumFractionDigits: 4})} คะแนน</span>
+              </div>
+              <div className="metric-card">
+                <span className="metric-label">National Revised Workload</span>
+                <span className="metric-value">{Number(results.metrics.national_revised_workload).toLocaleString(undefined, {maximumFractionDigits: 4})} คะแนน</span>
+                <span className={`metric-delta ${results.metrics.national_revised_workload - results.metrics.national_baseline_workload > 0 ? 'positive' : 'negative'}`}>
+                  {(results.metrics.national_revised_workload - results.metrics.national_baseline_workload > 0 ? '+' : '')}
+                  {Number(results.metrics.national_revised_workload - results.metrics.national_baseline_workload).toLocaleString(undefined, {maximumFractionDigits: 4})} คะแนน
+                </span>
+              </div>
+            </div>
+
+            <div className="form-group" style={{marginTop: '24px', maxWidth: '320px', padding: '16px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)'}}>
+              <label style={{fontWeight: 'bold', display: 'block', marginBottom: '8px'}}>ตัวคูณร่วม X (Budget Multiplier)</label>
+              <input 
+                type="number" 
+                value={budgetMultiplier} 
+                onChange={e => setBudgetMultiplier(parseFloat(e.target.value) || 0)} 
+                style={{width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-app)', color: 'var(--text-main)'}}
+              />
+            </div>
+
             <Metrics results={results} />
             <Charts results={results} />
             <DataTable results={results} />
+            <WorkloadDetailTable results={results} />
+            <SummaryAllDistrictsTable results={results} />
           </>
         )}
       </div>

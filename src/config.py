@@ -11,7 +11,7 @@ FILES = {
     "cluster": "cluster_district.xlsx",
     "group": "group_data_final.xlsx",
     "operating_distances": "operating_distances.xlsx",
-    "master": "master_final.xlsx"
+    "bridge_bmms": "bridge_bmms.xlsx",
 }
 
 CLUSTER_GRASS_FORMULA = {
@@ -159,39 +159,6 @@ WORKLOAD_CONFIG = [
         "condition_profile": "drainage",
         "note": "มี quantity แต่ยังไม่มี unit cost",
     },
-    {
-        "item": "ค่าบำรุงจุดกางเต็นท์",
-        "category": "Policy",
-        "quantity_col": "จำนวนจุดกางเต็นท์",
-        "unit": "แห่ง",
-        "damage_key": None,
-        "damage_probability": 1.0,
-        "unit_cost": 300000,
-        "condition_profile": "none",
-        "note": "งานนโยบาย ใช้ probability=1",
-    },
-    {
-        "item": "ค่าบำรุงจุดพักรถ",
-        "category": "Policy",
-        "quantity_col": "จำนวนจุดพักรถ",
-        "unit": "แห่ง",
-        "damage_key": None,
-        "damage_probability": 1.0,
-        "unit_cost": 300000,
-        "condition_profile": "traffic_asset",
-        "note": "งานนโยบาย ใช้ probability=1",
-    },
-    {
-        "item": "ค่าบำรุงภูมิสถาปัตย์",
-        "category": "Policy",
-        "quantity_col": "จำนวนภูมิสถาปัตย์",
-        "unit": "แห่ง",
-        "damage_key": None,
-        "damage_probability": 1.0,
-        "unit_cost": 300000,
-        "condition_profile": "rain_only",
-        "note": "งานนโยบาย ใช้ probability=1",
-    },
 ]
 
 FACTOR_PROFILES = {
@@ -200,5 +167,4 @@ FACTOR_PROFILES = {
     "bridge": {"traffic_score": 0.25, "truck_score": 0.30, "elevation_score": 0.25, "rain_score": 0.10, "operating_distance_score": 0.10},
     "drainage": {"traffic_score": 0.15, "truck_score": 0.00, "elevation_score": 0.20, "rain_score": 0.55, "operating_distance_score": 0.10},
     "traffic_asset": {"traffic_score": 0.50, "truck_score": 0.20, "elevation_score": 0.00, "rain_score": 0.20, "operating_distance_score": 0.10},
-    "rain_only": {"rain_score": 1.00},
 }
