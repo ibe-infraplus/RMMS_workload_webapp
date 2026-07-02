@@ -402,6 +402,40 @@ fig_w.update_traces(texttemplate="%{text:,.4f}", textposition="outside")
 fig_w.update_layout(yaxis_title="คะแนน (Workload Unit)", xaxis_title="")
 st.plotly_chart(fig_w, use_container_width=True)
 
+# Line chart comparing workload score of all districts
+st.subheader("เปรียบเทียบคะแนน Workload รวมทุกแขวง")
+line_w_base = baseline_summary[["dept3", "district_name", "workload_score"]].copy()
+line_w_base = line_w_base.rename(columns={"workload_score": "baseline_workload"})
+line_w_revised = revised_summary[["dept3", "district_name", "workload_score"]].copy()
+line_w_revised = line_w_revised.rename(columns={"workload_score": "revised_workload"})
+line_w_all = line_w_base.merge(line_w_revised, on=["dept3", "district_name"], how="inner")
+line_w_all["district_label"] = line_w_all["dept3"].astype(str) + " - " + line_w_all["district_name"].astype(str)
+line_w_all = line_w_all.sort_values("revised_workload", ascending=False)
+
+line_w_plot = pd.concat(
+    [
+        line_w_all[["district_label", "baseline_workload"]].rename(columns={"baseline_workload": "workload"}).assign(scenario="Baseline"),
+        line_w_all[["district_label", "revised_workload"]].rename(columns={"revised_workload": "workload"}).assign(scenario="Revised"),
+    ],
+    ignore_index=True,
+)
+fig_w_line = px.line(
+    line_w_plot,
+    x="district_label",
+    y="workload",
+    color="scenario",
+    markers=True,
+    title="เปรียบเทียบคะแนน Workload ทุกแขวง เรียงลำดับจากมากไปน้อย (Baseline vs Revised)",
+)
+fig_w_line.update_layout(
+    xaxis_title="District Name (แขวง)",
+    yaxis_title="คะแนน Workload",
+    xaxis=dict(tickangle=90),
+    legend_title_text="Scenario",
+    height=560,
+)
+st.plotly_chart(fig_w_line, use_container_width=True)
+
 # Input for X
 st.write("---")
 st.markdown("##### ปรับค่าตัวคูณร่วม (X) เพื่อจำลองงบประมาณ")

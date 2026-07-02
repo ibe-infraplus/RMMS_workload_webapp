@@ -156,6 +156,10 @@ def calculate_workload(req: CalculateRequest):
             "revised_total": float(revised_one["total_budget_model"]),
             "national_baseline": float(base_summary["total_budget_model"].sum()),
             "national_revised": float(revised_summary["total_budget_model"].sum()),
+            "baseline_workload_score": float(base_one["workload_score"]),
+            "revised_workload_score": float(revised_one["workload_score"]),
+            "national_baseline_workload": float(baseline_summary["workload_score"].sum()),
+            "national_revised_workload": float(revised_summary["workload_score"].sum()),
         },
         "breakdown": [
             {"component": "Base Workload", "baseline": float(base_one["base_workload_cost"]), "revised": float(revised_one["base_workload_cost"])},
@@ -168,8 +172,8 @@ def calculate_workload(req: CalculateRequest):
         "debug": debug_data,
         "default_quantities": default_quantities,
         "chart_data": {
-            "all_districts_baseline": base_summary[["dept3", "district_name", "total_budget_model"]].to_dict(orient="records"),
-            "all_districts_revised": revised_summary[["dept3", "district_name", "total_budget_model", "division_name"]].to_dict(orient="records")
+            "all_districts_baseline": base_summary[["dept3", "district_name", "total_budget_model", "workload_score"]].to_dict(orient="records"),
+            "all_districts_revised": revised_summary[["dept3", "district_name", "total_budget_model", "division_name", "workload_score"]].to_dict(orient="records")
         },
         "summary_all": revised_summary.sort_values("total_budget_model", ascending=False)[[
             "dept3", "division_name", "district_name", "base_workload_cost", "factor_cost", "fixed_cost", "total_budget_model"
