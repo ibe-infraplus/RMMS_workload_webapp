@@ -219,7 +219,7 @@ def calculate_workload(req: CalculateRequest):
             "national_revised": float(revised_summary["total_budget_model"].sum()),
             "baseline_workload_score": float(base_one["workload_score"]),
             "revised_workload_score": float(revised_one["workload_score"]),
-            "national_baseline_workload": float(baseline_summary["workload_score"].sum()),
+            "national_baseline_workload": float(base_summary["workload_score"].sum()),
             "national_revised_workload": float(revised_summary["workload_score"].sum()),
         },
         "breakdown": [
