@@ -1,6 +1,6 @@
 import Plot from 'react-plotly.js';
 
-export default function WorkloadCharts({ results }) {
+export default function WorkloadCharts({ results, selectedDept3 }) {
   if (!results) return null;
 
   // Selected district bar chart data
@@ -18,6 +18,40 @@ export default function WorkloadCharts({ results }) {
   const xSorted = sortedData.map(item => `${item.rev.dept3} - ${item.rev.district_name}`);
   const baseSorted = sortedData.map(item => item.base.workload_score || 0);
   const revSorted = sortedData.map(item => item.rev.workload_score || 0);
+
+  // Highlighting selected district point
+  const highlightTraces = [];
+  const selectedDistrictRow = sortedData.find(item => Number(item.rev.dept3) === Number(selectedDept3));
+  if (selectedDistrictRow) {
+    const selLabel = `${selectedDistrictRow.rev.dept3} - ${selectedDistrictRow.rev.district_name}`;
+    const selBaseVal = selectedDistrictRow.base.workload_score || 0;
+    const selRevVal = selectedDistrictRow.rev.workload_score || 0;
+
+    highlightTraces.push(
+      {
+        x: [selLabel],
+        y: [selBaseVal],
+        type: 'scatter',
+        mode: 'markers+text',
+        name: 'Selected (Baseline)',
+        marker: { color: '#ef4444', size: 12, line: { color: '#ffffff', width: 2 } },
+        text: [`Baseline: ${selBaseVal.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+        textposition: 'top center',
+        showlegend: false
+      },
+      {
+        x: [selLabel],
+        y: [selRevVal],
+        type: 'scatter',
+        mode: 'markers+text',
+        name: 'Selected (Revised)',
+        marker: { color: '#b91c1c', size: 12, line: { color: '#ffffff', width: 2 } },
+        text: [`Revised: ${selRevVal.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+        textposition: 'bottom center',
+        showlegend: false
+      }
+    );
+  }
 
   return (
     <>
@@ -69,7 +103,8 @@ export default function WorkloadCharts({ results }) {
               line: { color: '#10b981', width: 3, shape: 'spline' },
               fill: 'tozeroy',
               fillcolor: 'rgba(16, 185, 129, 0.15)'
-            }
+            },
+            ...highlightTraces
           ]}
           layout={{
             title: 'เปรียบเทียบคะแนน Workload ทุกแขวง (Baseline vs Revised)',

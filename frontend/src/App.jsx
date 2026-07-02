@@ -187,7 +187,7 @@ function App() {
               </div>
             </div>
 
-            <WorkloadCharts results={results} />
+            <WorkloadCharts results={results} selectedDept3={selectedDept3} />
 
             <div className="form-group" style={{marginTop: '24px', maxWidth: '320px', padding: '16px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)'}}>
               <label style={{fontWeight: 'bold', display: 'block', marginBottom: '8px'}}>ตัวคูณร่วม X (Budget Multiplier)</label>
