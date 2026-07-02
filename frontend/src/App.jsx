@@ -32,6 +32,7 @@ function App() {
   const [quantityUpdates, setQuantityUpdates] = useState({});
   const [workloadOverrides, setWorkloadOverrides] = useState({});
   const [currentConfig, setCurrentConfig] = useState([]);
+  const [budgetMultiplier, setBudgetMultiplier] = useState(100.0);
   
   // UI State
   const [isParamModalOpen, setIsParamModalOpen] = useState(false);
@@ -45,6 +46,7 @@ function App() {
       setInitData(res.data);
       setSelectedDept3(res.data.districts[0].dept3);
       setMaxFactorUplift(res.data.max_factor_uplift);
+      setBudgetMultiplier(res.data.default_budget_multiplier || 100.0);
       
       const overrides = {};
       res.data.param_grid.forEach(row => {
@@ -75,7 +77,8 @@ function App() {
       use_damage_probability: useDamageProbability,
       workload_overrides: workloadOverrides,
       quantity_updates: quantityUpdates,
-      custom_config: currentConfig
+      custom_config: currentConfig,
+      budget_multiplier: budgetMultiplier
     }).then(res => {
       setResults(res.data);
       setCalculating(false);
@@ -83,7 +86,7 @@ function App() {
       console.error(err);
       setCalculating(false);
     });
-  }, [selectedDept3, maxFactorUplift, useDamageProbability, workloadOverrides, quantityUpdates, currentConfig]);
+  }, [selectedDept3, maxFactorUplift, useDamageProbability, workloadOverrides, quantityUpdates, currentConfig, budgetMultiplier]);
 
   if (loadingInit) {
     return (
@@ -185,6 +188,15 @@ function App() {
               type="range" min="0" max="0.5" step="0.01" 
               value={maxFactorUplift} 
               onChange={e => setMaxFactorUplift(parseFloat(e.target.value))} 
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Budget Multiplier (X)</label>
+            <input 
+              type="number" 
+              value={budgetMultiplier} 
+              onChange={e => setBudgetMultiplier(parseFloat(e.target.value) || 0)} 
             />
           </div>
         </div>
@@ -429,7 +441,11 @@ Total Budget:
                     <th>Unit</th>
                     <th>D. Prob</th>
                     <th>Unit Cost</th>
-                    <th>Base Cost</th>
+                    <th>Base Value</th>
+                    <th>Total Qty</th>
+                    <th>Workload Unit</th>
+                    <th>Workload Score</th>
+                    <th>Base Cost (บาท)</th>
                     <th>Factor Index</th>
                     <th>Factor Cost</th>
                     <th>Total</th>
@@ -444,6 +460,10 @@ Total Budget:
                       <td>{row.unit}</td>
                       <td>{Number(row.damage_probability).toFixed(4)}</td>
                       <td>{Number(row.unit_cost).toLocaleString()}</td>
+                      <td>{Number(row.base_value || 0).toFixed(4)}</td>
+                      <td>{Number(row.total_quantity || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 3})}</td>
+                      <td>{Number(row.workload_unit || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 6})}</td>
+                      <td>{Number(row.workload_score || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 6})}</td>
                       <td>{Number(row.base_workload_cost).toLocaleString()}</td>
                       <td>{Number(row.factor_index_0_1).toFixed(4)}</td>
                       <td>{Number(row.factor_cost).toLocaleString()}</td>

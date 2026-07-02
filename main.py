@@ -76,12 +76,17 @@ def get_initial_data():
             val = float(pd.to_numeric(pd.Series([selected_row.get(q_col, 0)]), errors="coerce").fillna(0).iloc[0])
             default_quantities[q_col] = val
 
+    # Find min non-zero unit cost for budget multiplier
+    non_zero_costs = [p["unit_cost"] for p in param_grid if p["unit_cost"] > 0]
+    min_unit_cost = min(non_zero_costs) if non_zero_costs else 100.0
+
     return {
         "districts": replace_nan(districts),
         "param_grid": replace_nan(param_grid),
         "max_factor_uplift": MAX_FACTOR_UPLIFT,
         "default_quantities": default_quantities,
-        "master_columns": list(master.columns)
+        "master_columns": list(master.columns),
+        "default_budget_multiplier": min_unit_cost
     }
 
 class CalculateRequest(BaseModel):
@@ -91,6 +96,7 @@ class CalculateRequest(BaseModel):
     workload_overrides: Dict[str, Any]
     quantity_updates: Dict[str, float]
     custom_config: Optional[list] = None
+    budget_multiplier: Optional[float] = None
 
 @app.post("/api/calculate")
 def calculate_workload(req: CalculateRequest):
@@ -98,7 +104,7 @@ def calculate_workload(req: CalculateRequest):
     
     # Calculate baseline (no overrides, no quantity updates)
     base_summary, base_detail, base_master = build_results(
-        master.copy(), "data", req.max_factor_uplift, req.use_damage_probability, {}, custom_config=req.custom_config
+        master.copy(), "data", req.max_factor_uplift, req.use_damage_probability, {}, custom_config=req.custom_config, budget_multiplier=req.budget_multiplier
     )
 
     # Calculate revised
@@ -109,7 +115,7 @@ def calculate_workload(req: CalculateRequest):
             revised_master.loc[mask, q_col] = val
 
     revised_summary, revised_detail, revised_master_scored = build_results(
-        revised_master, "data", req.max_factor_uplift, req.use_damage_probability, req.workload_overrides, custom_config=req.custom_config
+        revised_master, "data", req.max_factor_uplift, req.use_damage_probability, req.workload_overrides, custom_config=req.custom_config, budget_multiplier=req.budget_multiplier
     )
 
     base_one = base_summary[base_summary["dept3"].astype(int) == req.selected_dept3].iloc[0]
@@ -127,7 +133,8 @@ def calculate_workload(req: CalculateRequest):
     # Details for selected district
     detail_cols = [
         "workload_item", "category", "quantity", "unit", "damage_probability", 
-        "unit_cost", "apply_damage_probability", "base_workload_cost", 
+        "unit_cost", "apply_damage_probability", "base_value", "total_quantity", 
+        "workload_unit", "workload_score", "base_workload_cost", 
         "condition_profile", "factor_index_0_1", "factor_cost", "workload_plus_factor", "note"
     ]
     detail_cols = [c for c in detail_cols if c in revised_detail.columns]

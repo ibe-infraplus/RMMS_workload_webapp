@@ -116,6 +116,7 @@ def compute_baseline(
     max_factor_uplift: float,
     use_damage_probability: bool,
     workload_overrides: dict,
+    budget_multiplier: float,
 ):
     return build_results(
         master,
@@ -123,6 +124,7 @@ def compute_baseline(
         max_factor_uplift=max_factor_uplift,
         use_damage_probability=use_damage_probability,
         workload_overrides=workload_overrides,
+        budget_multiplier=budget_multiplier,
     )
 
 
@@ -213,6 +215,18 @@ with st.sidebar:
             "apply_damage_probability": bool(row.get("apply_damage_probability", True)),
         }
 
+    # Find min non-zero unit cost for budget multiplier
+    non_zero_costs = [float(row.get("unit_cost", 0)) for _, row in editable_param_df.iterrows() if float(row.get("unit_cost", 0)) > 0]
+    default_x = min(non_zero_costs) if non_zero_costs else 100.0
+
+    budget_multiplier = st.sidebar.number_input(
+        "Budget Multiplier (X)",
+        min_value=0.0,
+        value=float(default_x),
+        step=1.0,
+        help="ตัวคูณสำหรับแปลงคะแนน Workload Unit เป็นงบประมาณ (บาท)"
+    )
+
     st.divider()
     st.markdown("**สูตรหลัก**")
     st.code(
@@ -246,6 +260,7 @@ baseline_summary, baseline_detail, baseline_master = compute_baseline(
     max_factor_uplift,
     use_damage_probability,
     workload_overrides,
+    budget_multiplier,
 )
 
 
@@ -340,6 +355,7 @@ revised_summary, revised_detail, revised_master_scored = build_results(
     max_factor_uplift=max_factor_uplift,
     use_damage_probability=use_damage_probability,
     workload_overrides=workload_overrides,
+    budget_multiplier=budget_multiplier,
 )
 
 base_one = baseline_summary.loc[baseline_summary["dept3"].astype(int).eq(selected_dept3)].iloc[0]
@@ -541,6 +557,10 @@ selected_detail_cols = [
     "damage_probability",
     "unit_cost",
     "apply_damage_probability",
+    "base_value",
+    "total_quantity",
+    "workload_unit",
+    "workload_score",
     "base_workload_cost",
     "condition_profile",
     "factor_index_0_1",
@@ -554,6 +574,10 @@ st.dataframe(
         "quantity": "{:,.3f}",
         "damage_probability": "{:.6f}",
         "unit_cost": "{:,.0f}",
+        "base_value": "{:.4f}",
+        "total_quantity": "{:,.3f}",
+        "workload_unit": "{:,.6f}",
+        "workload_score": "{:,.6f}",
         "base_workload_cost": "{:,.0f}",
         "factor_index_0_1": "{:.4f}",
         "factor_cost": "{:,.0f}",
