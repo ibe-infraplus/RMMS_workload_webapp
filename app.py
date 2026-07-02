@@ -434,6 +434,33 @@ fig_w_line.update_layout(
     legend_title_text="Scenario",
     height=560,
 )
+
+# Highlight selected district in red
+sel_row = line_w_all[line_w_all["dept3"].astype(int) == int(selected_dept3)]
+if not sel_row.empty:
+    sel_base_val = float(sel_row.iloc[0]["baseline_workload"])
+    sel_rev_val = float(sel_row.iloc[0]["revised_workload"])
+    fig_w_line.add_scatter(
+        x=[selected_label],
+        y=[sel_base_val],
+        mode="markers+text",
+        marker=dict(color="#ef4444", size=14, symbol="circle", line=dict(color="white", width=2)),
+        text=[f"Baseline: {sel_base_val:,.2f}"],
+        textposition="top center",
+        name="Selected (Baseline)",
+        showlegend=False
+    )
+    fig_w_line.add_scatter(
+        x=[selected_label],
+        y=[sel_rev_val],
+        mode="markers+text",
+        marker=dict(color="#b91c1c", size=14, symbol="circle", line=dict(color="white", width=2)),
+        text=[f"Revised: {sel_rev_val:,.2f}"],
+        textposition="bottom center",
+        name="Selected (Revised)",
+        showlegend=False
+    )
+
 st.plotly_chart(fig_w_line, use_container_width=True)
 
 # Input for X
