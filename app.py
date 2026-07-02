@@ -228,13 +228,10 @@ with st.sidebar:
     non_zero_costs = [float(row.get("unit_cost", 0)) for _, row in editable_param_df.iterrows() if float(row.get("unit_cost", 0)) > 0]
     default_x = min(non_zero_costs) if non_zero_costs else 100.0
 
-    budget_multiplier = st.sidebar.number_input(
-        "Budget Multiplier (X)",
-        min_value=0.0,
-        value=float(default_x),
-        step=1.0,
-        help="ตัวคูณสำหรับแปลงคะแนน Workload Unit เป็นงบประมาณ (บาท)"
-    )
+    if "budget_multiplier_input" in st.session_state:
+        budget_multiplier = st.session_state["budget_multiplier_input"]
+    else:
+        budget_multiplier = float(default_x)
 
     st.divider()
     st.markdown("**สูตรหลัก**")
@@ -375,8 +372,55 @@ revised_one = revised_summary.loc[revised_summary["dept3"].astype(int).eq(select
 # Result metrics
 # =========================================================
 
+# =========================================================
+# Result metrics - Section 3: Workload Scores
+# =========================================================
+
 st.divider()
-st.subheader("3) ผลคำนวณงบประมาณ")
+st.subheader("3) ผลคำนวณ Workload")
+
+# Show metric cards for Workload Scores
+w1, w2, w3, w4 = st.columns(4)
+baseline_workload_score = float(base_one["workload_score"])
+revised_workload_score = float(revised_one["workload_score"])
+w1.metric("Baseline Workload Score", f"{baseline_workload_score:,.4f} คะแนน")
+w2.metric(
+    "Revised Workload Score",
+    f"{revised_workload_score:,.4f} คะแนน",
+    delta=f"{revised_workload_score - baseline_workload_score:+,.4f} คะแนน"
+)
+w3.metric("National Baseline Workload", f"{float(baseline_summary['workload_score'].sum()):,.4f} คะแนน")
+w4.metric("National Revised Workload", f"{float(revised_summary['workload_score'].sum()):,.4f} คะแนน")
+
+# Bar chart comparing Workload Score of selected district
+chart_workload_df = pd.DataFrame({
+    "scenario": ["Baseline", "Revised"],
+    "workload_score": [baseline_workload_score, revised_workload_score],
+})
+fig_w = px.bar(chart_workload_df, x="scenario", y="workload_score", text="workload_score", title="เปรียบเทียบคะแนน Workload ของแขวงที่เลือก")
+fig_w.update_traces(texttemplate="%{text:,.4f}", textposition="outside")
+fig_w.update_layout(yaxis_title="คะแนน (Workload Unit)", xaxis_title="")
+st.plotly_chart(fig_w, use_container_width=True)
+
+# Input for X
+st.write("---")
+st.markdown("##### ปรับค่าตัวคูณร่วม (X) เพื่อจำลองงบประมาณ")
+budget_multiplier = st.number_input(
+    "ตัวคูณร่วม X (Budget Multiplier)",
+    min_value=0.0,
+    value=float(default_x),
+    step=1.0,
+    key="budget_multiplier_input",
+    help="ตัวคูณสำหรับแปลงคะแนน Workload Unit เป็นงบประมาณ (บาท)"
+)
+
+
+# =========================================================
+# Result metrics - Section 4: Budget Costs (Baht)
+# =========================================================
+
+st.divider()
+st.subheader("4) ผลคำนวณงบประมาณ (จากตัวคูณ X)")
 
 k1, k2, k3, k4 = st.columns(4)
 k1.metric("Baseline total budget", baht(base_one["total_budget_model"]))
@@ -385,24 +429,20 @@ k2.metric(
     baht(revised_one["total_budget_model"]),
     delta=baht(revised_one["total_budget_model"] - base_one["total_budget_model"]),
 )
-k3.metric("National baseline", baht(float(baseline_summary["total_budget_model"].sum())))
-k4.metric("National revised", baht(float(revised_summary["total_budget_model"].sum())))
+k3.metric("National baseline budget", baht(float(baseline_summary["total_budget_model"].sum())))
+k4.metric("National revised budget", baht(float(revised_summary["total_budget_model"].sum())))
 
-chart_df = pd.DataFrame({
+chart_budget_df = pd.DataFrame({
     "scenario": ["Baseline", "Revised"],
     "budget": [base_one["total_budget_model"], revised_one["total_budget_model"]],
 })
-fig = px.bar(chart_df, x="scenario", y="budget", text="budget", title="เปรียบเทียบงบประมาณของแขวงที่เลือก")
-fig.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
-fig.update_layout(yaxis_title="บาท", xaxis_title="")
-st.plotly_chart(fig, use_container_width=True)
+fig_b = px.bar(chart_budget_df, x="scenario", y="budget", text="budget", title="เปรียบเทียบงบประมาณของแขวงที่เลือก (บาท)")
+fig_b.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
+fig_b.update_layout(yaxis_title="บาท", xaxis_title="")
+st.plotly_chart(fig_b, use_container_width=True)
 
-
-# =========================================================
-# Line chart all districts
-# =========================================================
-
-st.subheader("กราฟเส้นงบประมาณรวมทุกแขวง")
+# Line chart comparing budget cost of all districts
+st.subheader("กราฟเส้นงบประมาณรวมทุกแขวง (บาท)")
 line_base = baseline_summary[["dept3", "district_name", "total_budget_model"]].copy()
 line_base = line_base.rename(columns={"total_budget_model": "baseline_budget"})
 line_revised = revised_summary[["dept3", "district_name", "total_budget_model"]].copy()
@@ -435,10 +475,7 @@ fig_line.update_layout(
 )
 st.plotly_chart(fig_line, use_container_width=True)
 
-# =========================================================
-# Donut chart all districts
-# =========================================================
-
+# Donut chart
 st.divider()
 show_budget_donut_chart(revised_summary)
 
@@ -520,7 +557,7 @@ except Exception as e:
 # =========================================================
 
 st.divider()
-st.subheader("4) Breakdown ของสูตร")
+st.subheader("5) Breakdown ของสูตร")
 breakdown = pd.DataFrame([
     {"component": "Base Workload", "baseline": base_one["base_workload_cost"], "revised": revised_one["base_workload_cost"]},
     {"component": "Factor", "baseline": base_one["factor_cost"], "revised": revised_one["factor_cost"]},
@@ -539,7 +576,7 @@ st.dataframe(
 # Quantity change table
 # =========================================================
 
-st.subheader("5) Quantity ที่ user ปรับ")
+st.subheader("6) Quantity ที่ user ปรับ")
 st.dataframe(
     quantity_change_df.style.format({
         "default_quantity": "{:,.3f}",
@@ -556,7 +593,7 @@ st.dataframe(
 # Workload detail
 # =========================================================
 
-st.subheader("6) Workload Detail รายการคำนวณ")
+st.subheader("7) Workload Detail รายการคำนวณ")
 selected_detail = revised_detail.loc[revised_detail["dept3"].astype(int).eq(selected_dept3)].copy()
 selected_detail_cols = [
     "workload_item",
@@ -601,7 +638,7 @@ st.dataframe(
 # Summary all districts
 # =========================================================
 
-st.subheader("7) Summary ทุกแขวง")
+st.subheader("8) Summary ทุกแขวง")
 st.caption("Version นี้แสดงงบจริงจากสูตร model โดยยังไม่มีการ scale/cap งบประมาณ")
 summary_view = revised_summary.sort_values("total_budget_model", ascending=False)[[
     "dept3",

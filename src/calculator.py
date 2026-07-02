@@ -219,6 +219,7 @@ def build_results(
     summary = (
         details.groupby(["dept3", "division_name", "district_name"], as_index=False)
         .agg(
+            workload_score=("workload_score", "sum"),
             base_workload_cost=("base_workload_cost", "sum"),
             factor_cost=("factor_cost", "sum"),
             workload_plus_factor=("workload_plus_factor", "sum"),
