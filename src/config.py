@@ -25,7 +25,7 @@ CLUSTER_GRASS_FORMULA = {
 WORKLOAD_CONFIG = [
     {
         "item": "ผิวจราจร/ระยะทางต่อ 2 ช่องจราจร",
-        "category": "Pavement",
+        "category": "Asset",
         "quantity_col": "length_to2",
         "unit": "กม.",
         "damage_key": None,

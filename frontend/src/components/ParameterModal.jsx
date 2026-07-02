@@ -96,7 +96,7 @@ export default function ParameterModal({
           
           {['Pavement', 'Asset', 'Policy', 'Other'].map(category => {
             const itemsInCat = currentConfig.map((c, i) => ({...c, originalIndex: i})).filter(c => (c.category || 'Other') === category);
-            if (itemsInCat.length === 0 && category === 'Other') return null;
+            if (itemsInCat.length === 0) return null;
 
             return (
               <div key={category} style={{marginBottom: '32px'}}>
