@@ -2,6 +2,15 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+import importlib
+import src.config
+import src.data_loader
+import src.calculator
+
+importlib.reload(src.config)
+importlib.reload(src.data_loader)
+importlib.reload(src.calculator)
+
 from src.calculator import build_results, damage_lookup, get_dynamic_unit_cost_and_probability
 from src.config import MAX_FACTOR_UPLIFT, WORKLOAD_CONFIG
 from src.data_loader import build_master, build_pavement_unit_cost_from_rmms
