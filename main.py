@@ -233,8 +233,8 @@ def calculate_workload(req: CalculateRequest):
         "debug": debug_data,
         "default_quantities": default_quantities,
         "chart_data": {
-            "all_districts_baseline": base_summary[["dept3", "district_name", "total_budget_model"]].to_dict(orient="records"),
-            "all_districts_revised": revised_summary[["dept3", "district_name", "total_budget_model", "division_name"]].to_dict(orient="records")
+            "all_districts_baseline": base_summary[["dept3", "district_name", "total_budget_model", "workload_score"]].to_dict(orient="records"),
+            "all_districts_revised": revised_summary[["dept3", "district_name", "total_budget_model", "division_name", "workload_score"]].to_dict(orient="records")
         },
         "summary_all": revised_summary.sort_values("total_budget_model", ascending=False)[[
             "dept3", "division_name", "district_name", "base_workload_cost", "factor_cost", "fixed_cost", "total_budget_model"

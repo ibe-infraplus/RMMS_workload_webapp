@@ -11,6 +11,7 @@ import Charts from './components/Charts';
 import DataTable from './components/DataTable';
 import WorkloadDetailTable from './components/WorkloadDetailTable';
 import SummaryAllDistrictsTable from './components/SummaryAllDistrictsTable';
+import WorkloadCharts from './components/WorkloadCharts';
 
 const API_BASE = '/api';
 
@@ -185,6 +186,8 @@ function App() {
                 </span>
               </div>
             </div>
+
+            <WorkloadCharts results={results} />
 
             <div className="form-group" style={{marginTop: '24px', maxWidth: '320px', padding: '16px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)'}}>
               <label style={{fontWeight: 'bold', display: 'block', marginBottom: '8px'}}>ตัวคูณร่วม X (Budget Multiplier)</label>

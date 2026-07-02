@@ -147,6 +147,7 @@ def get_warranty_distances(data_dir=None):
     """
     ดึงข้อมูลระยะทางติดค้ำประกันจาก API สำหรับปี 2567, 2568, 2569
     โดยมีระบบ Cache ลงไฟล์ (api_warranty_cache.json) มีอายุ 24 ชั่วโมง เพื่อลดการเรียก API ซ้ำ
+    หากเรียก API ล้มเหลว จะดึงข้อมูลจากไฟล์สำรอง response256*.json ในเครื่องแทน
     """
     import requests
     from collections import defaultdict
@@ -185,10 +186,25 @@ def get_warranty_distances(data_dir=None):
     
     for year in years:
         url = f"https://plannet.doh.go.th/PN2021API/PlanData/getTPMSActionPlan/{year}"
+        data = None
         try:
-            res = requests.get(url, headers=headers, timeout=30)
+            res = requests.get(url, headers=headers, timeout=10)
             res.raise_for_status()
             data = res.json()
+        except Exception as e:
+            print(f"Warning: Failed to fetch API for year {year}: {e}. Falling back to local static JSON file.")
+            # Fallback to local response{year}.json
+            local_json = base_path / f"response{year}.json"
+            if local_json.exists():
+                try:
+                    with open(local_json, 'r', encoding='utf-8') as f_local:
+                        data = json.load(f_local)
+                except Exception as ex:
+                    print(f"Error: Failed to read local fallback file {local_json}: {ex}")
+            else:
+                print(f"Error: Local fallback file {local_json} not found.")
+
+        if data:
             for item in data:
                 dis_code = item.get('dis_code')
                 if dis_code is not None:
@@ -196,8 +212,6 @@ def get_warranty_distances(data_dir=None):
                     tasks = item.get('Plan_tasks', [])
                     dist_sum = sum(task.get('distance', 0) for task in tasks)
                     warranty_dict[dis_code_int] += dist_sum
-        except Exception as e:
-            print(f"Warning: Failed to fetch API for year {year}: {e}")
 
     # 3. Save to cache
     try:
