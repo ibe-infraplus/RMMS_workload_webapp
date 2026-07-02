@@ -204,7 +204,7 @@ function App() {
         <div>
           <h3>สูตรหลัก</h3>
           <div className="code-block">
-Asset / Policy workload:
+Asset workload:
 quantity × damage_probability × unit_cost
 
 Pavement workload:
@@ -491,7 +491,7 @@ Total Budget:
             <div className="modal-body">
               <p style={{marginBottom: '16px'}}>สามารถปรับแก้ Damage Probability และ Unit Cost ได้ที่ตารางด้านล่าง หรือเพิ่ม/ลบตัวแปรตามหมวดหมู่ การเปลี่ยนแปลงจะนำไปคำนวณทันที</p>
               
-              {['Pavement', 'Asset', 'Policy', 'Other'].map(category => {
+              {['Pavement', 'Asset', 'Other'].map(category => {
                 const itemsInCat = currentConfig.map((c, i) => ({...c, originalIndex: i})).filter(c => (c.category || 'Other') === category);
                 if (itemsInCat.length === 0 && category === 'Other') return null;
 

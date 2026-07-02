@@ -217,7 +217,7 @@ with st.sidebar:
     st.markdown("**สูตรหลัก**")
     st.code(
         """
-Asset / Policy workload:
+Asset workload:
 quantity × damage_probability × unit_cost
 
 Pavement workload:
