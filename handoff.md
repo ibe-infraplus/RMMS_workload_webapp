@@ -34,7 +34,7 @@ Implemented a relative scoring mathematical model for all workload items:
 Code updates:
 - Updated [src/calculator.py](file:///C:/Users/Sunday/.gemini/antigravity/scratch/RMMS_workload_webapp/src/calculator.py) to process new workload unit equations.
 - Modified [main.py](file:///C:/Users/Sunday/.gemini/antigravity/scratch/RMMS_workload_webapp/main.py) to add `budget_multiplier` parameter to API request schemas.
-- Modified [app.py](file:///C:/Users/Sunday/.gemini/antigravity/scratch/RMMS_workload_webapp/app.py) to include **Budget Multiplier (X)** sidebar number input and detailed metrics in the calculation table.
+- Modified [app.py](file:///C:/Users/Sunday/.gemini/antigravity/scratch/RMMS_workload_webapp/app.py) to include **Budget Multiplier (X)** sidebar number input, detailed metrics in the calculation table, and added `importlib.reload` statements to bypass Streamlit Cloud's module caching issue.
 - Modified [App.jsx](file:///C:/Users/Sunday/.gemini/antigravity/scratch/RMMS_workload_webapp/frontend/src/App.jsx) to add input fields and columns for the React frontend counterpart.
 
 ### 2. Policy Workload Removal (Implemented - 2026-07-02)
