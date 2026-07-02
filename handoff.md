@@ -16,24 +16,24 @@ This document summarizes the current state, configuration, and recent changes in
 - **`main`**: React (frontend) + FastAPI (backend) production-ready stack.
 - **`streamlit`**: Streamlit single-file dashboard implementation (`app.py`), used for quick deployments (e.g. on Streamlit Community Cloud).
 
-## Latest Actions & Changes (2026-06-30)
+## Latest Actions & Changes
 
-1. **Environment Setup**:
-   - Installed Git and located it at `C:\Program Files\Git\bin\git.exe`.
-   - Cloned the repository into the workspace folder.
-   - Checked out the `streamlit` branch.
-   - Configured local git user name and email.
+### 1. Warranty Distance & Live API Updates (Pulled from upstream - 2026-07-02)
+- Added live DOH API lookup for years 2567, 2568, and 2569 action plans to retrieve warranty distance.
+- Subtracted warranty distance from `length_to2` (pavement length) in the workload data loader.
+- Added 24-hour API response cache (`api_warranty_cache.json`).
+- Updated Streamlit UI to show a read-only "ระยะติดค้ำประกัน (กม.)" input description below the pavement length.
 
-2. **Code Modification**:
-   - Updated the header title in `app.py` to:
-     ```python
-     st.title("🛣️ Workload Cost Calculation Web App - test update")
-     ```
-
-3. **Deployment/Push**:
-   - Committed the title change (`test: update page header title`).
-   - Pushed successfully to `origin/streamlit`.
-   - Changes are automatically synchronized with the live Streamlit deployment if configured with auto-redeploy.
+### 2. Policy Workload Removal (Implemented - 2026-07-02)
+- Removed "Policy" workload category ("งานนโยบาย") and its three items:
+  1. `ค่าบำรุงจุดกางเต็นท์` (จำนวนจุดกางเต็นท์)
+  2. `ค่าบำรุงจุดพักรถ` (จำนวนจุดพักรถ)
+  3. `ค่าบำรุงภูมิสถาปัตย์` (จำนวนภูมิสถาปัตย์)
+- Cleaned up config and layouts:
+  - Removed `rain_only` profile from `FACTOR_PROFILES` in `src/config.py`.
+  - Updated formula labels from "Asset / Policy workload" to "Asset workload" in `app.py` and `frontend/src/App.jsx`.
+  - Removed "Policy" from category lists in `frontend/src/App.jsx` parameter modal.
+- Committed and pushed changes successfully to `origin/streamlit`.
 
 ## How to Resume Work
 
@@ -42,5 +42,5 @@ This document summarizes the current state, configuration, and recent changes in
    - Run the Streamlit app: `streamlit run app.py`
 
 2. **Next Steps**:
-   - Verify the "test update" title appears on the live Streamlit site.
-   - Discuss and implement actual workload cost calculations, charts, or other layout adjustments requested by the user.
+   - Verify the deployment updates successfully on the live Streamlit Community Cloud site.
+   - Verify that "งานนโยบาย" (Policy) items no longer show in the parameters or calculations.
