@@ -141,6 +141,49 @@ def load_operating_distances(data_dir=None):
     df = pd.read_excel(file_path("operating_distances", data_dir))
     df["dept3"] = first3_code(df["depot_code"])
     return df.groupby("dept3", as_index=False)["total_distance_km"].sum().rename(columns={"total_distance_km": "operating_distance"})
+def parse_km_helper(km_str):
+    if not km_str:
+        return None
+    try:
+        km_str = str(km_str).replace(' ', '').replace(',', '')
+        match = re.search(r'(\d+)\+(\d+(\.\d+)?)', km_str)
+        if match:
+            return float(match.group(1)) + float(match.group(2)) / 1000.0
+        return float(km_str)
+    except Exception:
+        return None
+
+
+def clean_and_validate_task_distance(task, budget_request=None):
+    dist = float(task.get('distance', 0.0))
+    start_str = task.get('km_start')
+    end_str = task.get('km_end')
+    
+    start_val = parse_km_helper(start_str)
+    end_val = parse_km_helper(end_str)
+    
+    if start_val is not None and end_val is not None:
+        math_diff = abs(end_val - start_val)
+        
+        # 1. Check severe mismatch (distance > 3 * math_diff and distance > 5.0 km)
+        if math_diff > 0 and dist > 5.0 and dist > 3.0 * math_diff:
+            main_way = str(task.get('main_way', '')).upper()
+            if 'LT' in main_way and 'RT' in main_way:
+                cleaned_dist = 2.0 * math_diff
+            else:
+                cleaned_dist = math_diff
+            return cleaned_dist
+            
+    # 2. Budget heuristic: if budget is small but distance is huge
+    if budget_request is not None and budget_request < 5000000.0 and dist > 10.0:
+        if start_val is not None and end_val is not None:
+            math_diff = abs(end_val - start_val)
+            cleaned_dist = math_diff if math_diff > 0 else 1.0
+        else:
+            cleaned_dist = 1.0
+        return cleaned_dist
+        
+    return dist
 
 
 def get_warranty_distances(data_dir=None):
@@ -210,7 +253,8 @@ def get_warranty_distances(data_dir=None):
                 if dis_code is not None:
                     dis_code_int = int(dis_code)
                     tasks = item.get('Plan_tasks', [])
-                    dist_sum = sum(task.get('distance', 0) for task in tasks)
+                    budget_request = item.get('budget_request')
+                    dist_sum = sum(clean_and_validate_task_distance(task, budget_request) for task in tasks)
                     warranty_dict[dis_code_int] += dist_sum
 
     # 3. Save to cache
