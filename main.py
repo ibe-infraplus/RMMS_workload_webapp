@@ -180,6 +180,13 @@ def calculate_workload(req: CalculateRequest):
         revised_master, "data", req.max_factor_uplift, req.use_damage_probability, req.workload_overrides, custom_config=req.custom_config
     )
 
+    # Extract pavement workload score from details
+    pave_base = base_detail[base_detail["workload_item"].str.contains("ระยะทางต่อ 2 ช่องจราจร", na=False)][["dept3", "workload_score"]].rename(columns={"workload_score": "pavement_workload"})
+    pave_rev = revised_detail[revised_detail["workload_item"].str.contains("ระยะทางต่อ 2 ช่องจราจร", na=False)][["dept3", "workload_score"]].rename(columns={"workload_score": "pavement_workload"})
+
+    base_summary = base_summary.merge(pave_base, on="dept3", how="left").fillna({"pavement_workload": 0.0})
+    revised_summary = revised_summary.merge(pave_rev, on="dept3", how="left").fillna({"pavement_workload": 0.0})
+
     base_one = base_summary[base_summary["dept3"].astype(int) == req.selected_dept3].iloc[0]
     revised_one = revised_summary[revised_summary["dept3"].astype(int) == req.selected_dept3].iloc[0]
 
@@ -233,8 +240,8 @@ def calculate_workload(req: CalculateRequest):
         "debug": debug_data,
         "default_quantities": default_quantities,
         "chart_data": {
-            "all_districts_baseline": base_summary[["dept3", "district_name", "total_budget_model", "workload_score"]].to_dict(orient="records"),
-            "all_districts_revised": revised_summary[["dept3", "district_name", "total_budget_model", "division_name", "workload_score"]].to_dict(orient="records")
+            "all_districts_baseline": base_summary[["dept3", "district_name", "total_budget_model", "workload_score", "pavement_workload"]].to_dict(orient="records"),
+            "all_districts_revised": revised_summary[["dept3", "district_name", "total_budget_model", "division_name", "workload_score", "pavement_workload"]].to_dict(orient="records")
         },
         "summary_all": revised_summary.sort_values("total_budget_model", ascending=False)[[
             "dept3", "division_name", "district_name", "base_workload_cost", "factor_cost", "fixed_cost", "total_budget_model"

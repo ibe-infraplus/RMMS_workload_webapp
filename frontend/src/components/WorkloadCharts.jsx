@@ -18,6 +18,7 @@ export default function WorkloadCharts({ results, selectedDept3 }) {
   const xSorted = sortedData.map(item => `${item.rev.dept3} - ${item.rev.district_name}`);
   const baseSorted = sortedData.map(item => item.base.workload_score || 0);
   const revSorted = sortedData.map(item => item.rev.workload_score || 0);
+  const paveSorted = sortedData.map(item => item.rev.pavement_workload || 0);
 
   // Highlighting selected district point
   const highlightTraces = [];
@@ -26,6 +27,8 @@ export default function WorkloadCharts({ results, selectedDept3 }) {
     const selLabel = `${selectedDistrictRow.rev.dept3} - ${selectedDistrictRow.rev.district_name}`;
     const selBaseVal = selectedDistrictRow.base.workload_score || 0;
     const selRevVal = selectedDistrictRow.rev.workload_score || 0;
+
+    const selPaveVal = selectedDistrictRow.rev.pavement_workload || 0;
 
     highlightTraces.push(
       {
@@ -47,6 +50,17 @@ export default function WorkloadCharts({ results, selectedDept3 }) {
         name: 'Selected (Revised)',
         marker: { color: '#b91c1c', size: 12, line: { color: '#ffffff', width: 2 } },
         text: [`Revised: ${selRevVal.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+        textposition: 'bottom center',
+        showlegend: false
+      },
+      {
+        x: [selLabel],
+        y: [selPaveVal],
+        type: 'scatter',
+        mode: 'markers+text',
+        name: 'Selected (ผิวจราจร)',
+        marker: { color: '#ea580c', size: 12, line: { color: '#ffffff', width: 2 } },
+        text: [`ผิวจราจร: ${selPaveVal.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
         textposition: 'bottom center',
         showlegend: false
       }
@@ -103,6 +117,14 @@ export default function WorkloadCharts({ results, selectedDept3 }) {
               line: { color: '#10b981', width: 3, shape: 'spline' },
               fill: 'tozeroy',
               fillcolor: 'rgba(16, 185, 129, 0.15)'
+            },
+            {
+              x: xSorted,
+              y: paveSorted,
+              type: 'scatter',
+              mode: 'lines',
+              name: 'ผิวจราจร (Revised)',
+              line: { color: '#f97316', width: 2, shape: 'spline' }
             },
             ...highlightTraces
           ]}

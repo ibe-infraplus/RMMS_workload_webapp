@@ -404,10 +404,17 @@ st.plotly_chart(fig_w, use_container_width=True)
 
 # Line chart comparing workload score of all districts
 st.subheader("เปรียบเทียบคะแนน Workload รวมทุกแขวง")
-line_w_base = baseline_summary[["dept3", "district_name", "workload_score"]].copy()
-line_w_base = line_w_base.rename(columns={"workload_score": "baseline_workload"})
-line_w_revised = revised_summary[["dept3", "district_name", "workload_score"]].copy()
-line_w_revised = line_w_revised.rename(columns={"workload_score": "revised_workload"})
+
+# Extract pavement workload score from details
+pave_base = baseline_detail[baseline_detail["workload_item"].str.contains("ระยะทางต่อ 2 ช่องจราจร", na=False)][["dept3", "workload_score"]].rename(columns={"workload_score": "pavement_workload_base"})
+pave_rev = revised_detail[revised_detail["workload_item"].str.contains("ระยะทางต่อ 2 ช่องจราจร", na=False)][["dept3", "workload_score"]].rename(columns={"workload_score": "pavement_workload_revised"})
+
+line_w_base = baseline_summary[["dept3", "district_name", "workload_score"]].copy().rename(columns={"workload_score": "baseline_workload"})
+line_w_base = line_w_base.merge(pave_base, on="dept3", how="left").fillna({"pavement_workload_base": 0.0})
+
+line_w_revised = revised_summary[["dept3", "district_name", "workload_score"]].copy().rename(columns={"workload_score": "revised_workload"})
+line_w_revised = line_w_revised.merge(pave_rev, on="dept3", how="left").fillna({"pavement_workload_revised": 0.0})
+
 line_w_all = line_w_base.merge(line_w_revised, on=["dept3", "district_name"], how="inner")
 line_w_all["district_label"] = line_w_all["dept3"].astype(str) + " - " + line_w_all["district_name"].astype(str)
 line_w_all = line_w_all.sort_values("revised_workload", ascending=False)
@@ -416,6 +423,7 @@ line_w_plot = pd.concat(
     [
         line_w_all[["district_label", "baseline_workload"]].rename(columns={"baseline_workload": "workload"}).assign(scenario="Baseline"),
         line_w_all[["district_label", "revised_workload"]].rename(columns={"revised_workload": "workload"}).assign(scenario="Revised"),
+        line_w_all[["district_label", "pavement_workload_revised"]].rename(columns={"pavement_workload_revised": "workload"}).assign(scenario="ผิวจราจร (Revised)"),
     ],
     ignore_index=True,
 )
@@ -424,6 +432,11 @@ fig_w_line = px.line(
     x="district_label",
     y="workload",
     color="scenario",
+    color_discrete_map={
+        "Baseline": "#94a3b8",
+        "Revised": "#10b981",
+        "ผิวจราจร (Revised)": "#f97316"
+    },
     markers=True,
     title="เปรียบเทียบคะแนน Workload ทุกแขวง เรียงลำดับจากมากไปน้อย (Baseline vs Revised)",
 )
@@ -435,11 +448,13 @@ fig_w_line.update_layout(
     height=560,
 )
 
-# Highlight selected district in red
+# Highlight selected district
 sel_row = line_w_all[line_w_all["dept3"].astype(int) == int(selected_dept3)]
 if not sel_row.empty:
     sel_base_val = float(sel_row.iloc[0]["baseline_workload"])
     sel_rev_val = float(sel_row.iloc[0]["revised_workload"])
+    sel_pave_val = float(sel_row.iloc[0]["pavement_workload_revised"])
+    
     fig_w_line.add_scatter(
         x=[selected_label],
         y=[sel_base_val],
@@ -458,6 +473,16 @@ if not sel_row.empty:
         text=[f"Revised: {sel_rev_val:,.2f}"],
         textposition="bottom center",
         name="Selected (Revised)",
+        showlegend=False
+    )
+    fig_w_line.add_scatter(
+        x=[selected_label],
+        y=[sel_pave_val],
+        mode="markers+text",
+        marker=dict(color="#ea580c", size=14, symbol="circle", line=dict(color="white", width=2)),
+        text=[f"ผิวจราจร: {sel_pave_val:,.2f}"],
+        textposition="bottom center",
+        name="Selected (ผิวจราจร)",
         showlegend=False
     )
 
