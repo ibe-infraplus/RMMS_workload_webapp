@@ -2,6 +2,15 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+import importlib
+import src.config
+import src.data_loader
+import src.calculator
+
+importlib.reload(src.config)
+importlib.reload(src.data_loader)
+importlib.reload(src.calculator)
+
 from src.calculator import build_results, damage_lookup, get_dynamic_unit_cost_and_probability
 from src.config import MAX_FACTOR_UPLIFT, WORKLOAD_CONFIG
 from src.data_loader import build_master, build_pavement_unit_cost_from_rmms
@@ -116,6 +125,7 @@ def compute_baseline(
     max_factor_uplift: float,
     use_damage_probability: bool,
     workload_overrides: dict,
+    budget_multiplier: float,
 ):
     return build_results(
         master,
@@ -123,6 +133,7 @@ def compute_baseline(
         max_factor_uplift=max_factor_uplift,
         use_damage_probability=use_damage_probability,
         workload_overrides=workload_overrides,
+        budget_multiplier=budget_multiplier,
     )
 
 
@@ -213,11 +224,20 @@ with st.sidebar:
             "apply_damage_probability": bool(row.get("apply_damage_probability", True)),
         }
 
+    # Find min non-zero unit cost for budget multiplier
+    non_zero_costs = [float(row.get("unit_cost", 0)) for _, row in editable_param_df.iterrows() if float(row.get("unit_cost", 0)) > 0]
+    default_x = min(non_zero_costs) if non_zero_costs else 100.0
+
+    if "budget_multiplier_input" in st.session_state:
+        budget_multiplier = st.session_state["budget_multiplier_input"]
+    else:
+        budget_multiplier = float(default_x)
+
     st.divider()
     st.markdown("**สูตรหลัก**")
     st.code(
         """
-Asset / Policy workload:
+Asset workload:
 quantity × damage_probability × unit_cost
 
 Pavement workload:
@@ -246,6 +266,7 @@ baseline_summary, baseline_detail, baseline_master = compute_baseline(
     max_factor_uplift,
     use_damage_probability,
     workload_overrides,
+    budget_multiplier,
 )
 
 
@@ -340,6 +361,7 @@ revised_summary, revised_detail, revised_master_scored = build_results(
     max_factor_uplift=max_factor_uplift,
     use_damage_probability=use_damage_probability,
     workload_overrides=workload_overrides,
+    budget_multiplier=budget_multiplier,
 )
 
 base_one = baseline_summary.loc[baseline_summary["dept3"].astype(int).eq(selected_dept3)].iloc[0]
@@ -350,8 +372,116 @@ revised_one = revised_summary.loc[revised_summary["dept3"].astype(int).eq(select
 # Result metrics
 # =========================================================
 
+# =========================================================
+# Result metrics - Section 3: Workload Scores
+# =========================================================
+
 st.divider()
-st.subheader("3) ผลคำนวณงบประมาณ")
+st.subheader("3) ผลคำนวณ Workload")
+
+# Show metric cards for Workload Scores
+w1, w2, w3, w4 = st.columns(4)
+baseline_workload_score = float(base_one["workload_score"])
+revised_workload_score = float(revised_one["workload_score"])
+w1.metric("Baseline Workload Score", f"{baseline_workload_score:,.4f} คะแนน")
+w2.metric(
+    "Revised Workload Score",
+    f"{revised_workload_score:,.4f} คะแนน",
+    delta=f"{revised_workload_score - baseline_workload_score:+,.4f} คะแนน"
+)
+w3.metric("National Baseline Workload", f"{float(baseline_summary['workload_score'].sum()):,.4f} คะแนน")
+w4.metric("National Revised Workload", f"{float(revised_summary['workload_score'].sum()):,.4f} คะแนน")
+
+# Bar chart comparing Workload Score of selected district
+chart_workload_df = pd.DataFrame({
+    "scenario": ["Baseline", "Revised"],
+    "workload_score": [baseline_workload_score, revised_workload_score],
+})
+fig_w = px.bar(chart_workload_df, x="scenario", y="workload_score", text="workload_score", title="เปรียบเทียบคะแนน Workload ของแขวงที่เลือก")
+fig_w.update_traces(texttemplate="%{text:,.4f}", textposition="outside")
+fig_w.update_layout(yaxis_title="คะแนน (Workload Unit)", xaxis_title="")
+st.plotly_chart(fig_w, use_container_width=True)
+
+# Line chart comparing workload score of all districts
+st.subheader("เปรียบเทียบคะแนน Workload รวมทุกแขวง")
+line_w_base = baseline_summary[["dept3", "district_name", "workload_score"]].copy()
+line_w_base = line_w_base.rename(columns={"workload_score": "baseline_workload"})
+line_w_revised = revised_summary[["dept3", "district_name", "workload_score"]].copy()
+line_w_revised = line_w_revised.rename(columns={"workload_score": "revised_workload"})
+line_w_all = line_w_base.merge(line_w_revised, on=["dept3", "district_name"], how="inner")
+line_w_all["district_label"] = line_w_all["dept3"].astype(str) + " - " + line_w_all["district_name"].astype(str)
+line_w_all = line_w_all.sort_values("revised_workload", ascending=False)
+
+line_w_plot = pd.concat(
+    [
+        line_w_all[["district_label", "baseline_workload"]].rename(columns={"baseline_workload": "workload"}).assign(scenario="Baseline"),
+        line_w_all[["district_label", "revised_workload"]].rename(columns={"revised_workload": "workload"}).assign(scenario="Revised"),
+    ],
+    ignore_index=True,
+)
+fig_w_line = px.line(
+    line_w_plot,
+    x="district_label",
+    y="workload",
+    color="scenario",
+    markers=True,
+    title="เปรียบเทียบคะแนน Workload ทุกแขวง เรียงลำดับจากมากไปน้อย (Baseline vs Revised)",
+)
+fig_w_line.update_layout(
+    xaxis_title="District Name (แขวง)",
+    yaxis_title="คะแนน Workload",
+    xaxis=dict(tickangle=90),
+    legend_title_text="Scenario",
+    height=560,
+)
+
+# Highlight selected district in red
+sel_row = line_w_all[line_w_all["dept3"].astype(int) == int(selected_dept3)]
+if not sel_row.empty:
+    sel_base_val = float(sel_row.iloc[0]["baseline_workload"])
+    sel_rev_val = float(sel_row.iloc[0]["revised_workload"])
+    fig_w_line.add_scatter(
+        x=[selected_label],
+        y=[sel_base_val],
+        mode="markers+text",
+        marker=dict(color="#ef4444", size=14, symbol="circle", line=dict(color="white", width=2)),
+        text=[f"Baseline: {sel_base_val:,.2f}"],
+        textposition="top center",
+        name="Selected (Baseline)",
+        showlegend=False
+    )
+    fig_w_line.add_scatter(
+        x=[selected_label],
+        y=[sel_rev_val],
+        mode="markers+text",
+        marker=dict(color="#b91c1c", size=14, symbol="circle", line=dict(color="white", width=2)),
+        text=[f"Revised: {sel_rev_val:,.2f}"],
+        textposition="bottom center",
+        name="Selected (Revised)",
+        showlegend=False
+    )
+
+st.plotly_chart(fig_w_line, use_container_width=True)
+
+# Input for X
+st.write("---")
+st.markdown("##### ปรับค่าตัวคูณร่วม (X) เพื่อจำลองงบประมาณ")
+budget_multiplier = st.number_input(
+    "ตัวคูณร่วม X (Budget Multiplier)",
+    min_value=0.0,
+    value=float(default_x),
+    step=1.0,
+    key="budget_multiplier_input",
+    help="ตัวคูณสำหรับแปลงคะแนน Workload Unit เป็นงบประมาณ (บาท)"
+)
+
+
+# =========================================================
+# Result metrics - Section 4: Budget Costs (Baht)
+# =========================================================
+
+st.divider()
+st.subheader("4) ผลคำนวณงบประมาณ (จากตัวคูณ X)")
 
 k1, k2, k3, k4 = st.columns(4)
 k1.metric("Baseline total budget", baht(base_one["total_budget_model"]))
@@ -360,24 +490,35 @@ k2.metric(
     baht(revised_one["total_budget_model"]),
     delta=baht(revised_one["total_budget_model"] - base_one["total_budget_model"]),
 )
-k3.metric("National baseline", baht(float(baseline_summary["total_budget_model"].sum())))
-k4.metric("National revised", baht(float(revised_summary["total_budget_model"].sum())))
+k3.metric("National baseline budget", baht(float(baseline_summary["total_budget_model"].sum())))
+k4.metric("National revised budget", baht(float(revised_summary["total_budget_model"].sum())))
 
-chart_df = pd.DataFrame({
+# Breakdown of budget components in Section 4
+st.write("###### Breakdown งบประมาณส่วนต่างๆ")
+breakdown = pd.DataFrame([
+    {"component": "Base Workload", "baseline": base_one["base_workload_cost"], "revised": revised_one["base_workload_cost"]},
+    {"component": "Factor", "baseline": base_one["factor_cost"], "revised": revised_one["factor_cost"]},
+    {"component": "Fixed Cost: ค่าเช่าเครื่องจักร", "baseline": base_one["machine_rental_cost"], "revised": revised_one["machine_rental_cost"]},
+    {"component": "Fixed Cost: งานตัดหญ้า", "baseline": base_one["grass_cost_estimate"], "revised": revised_one["grass_cost_estimate"]},
+    {"component": "Total Budget", "baseline": base_one["total_budget_model"], "revised": revised_one["total_budget_model"]},
+])
+breakdown["change"] = breakdown["revised"] - breakdown["baseline"]
+st.dataframe(
+    breakdown.style.format({"baseline": "{:,.0f}", "revised": "{:,.0f}", "change": "{:,.0f}"}),
+    use_container_width=True,
+)
+
+chart_budget_df = pd.DataFrame({
     "scenario": ["Baseline", "Revised"],
     "budget": [base_one["total_budget_model"], revised_one["total_budget_model"]],
 })
-fig = px.bar(chart_df, x="scenario", y="budget", text="budget", title="เปรียบเทียบงบประมาณของแขวงที่เลือก")
-fig.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
-fig.update_layout(yaxis_title="บาท", xaxis_title="")
-st.plotly_chart(fig, use_container_width=True)
+fig_b = px.bar(chart_budget_df, x="scenario", y="budget", text="budget", title="เปรียบเทียบงบประมาณของแขวงที่เลือก (บาท)")
+fig_b.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
+fig_b.update_layout(yaxis_title="บาท", xaxis_title="")
+st.plotly_chart(fig_b, use_container_width=True)
 
-
-# =========================================================
-# Line chart all districts
-# =========================================================
-
-st.subheader("กราฟเส้นงบประมาณรวมทุกแขวง")
+# Line chart comparing budget cost of all districts
+st.subheader("กราฟเส้นงบประมาณรวมทุกแขวง (บาท)")
 line_base = baseline_summary[["dept3", "district_name", "total_budget_model"]].copy()
 line_base = line_base.rename(columns={"total_budget_model": "baseline_budget"})
 line_revised = revised_summary[["dept3", "district_name", "total_budget_model"]].copy()
@@ -410,10 +551,7 @@ fig_line.update_layout(
 )
 st.plotly_chart(fig_line, use_container_width=True)
 
-# =========================================================
-# Donut chart all districts
-# =========================================================
-
+# Donut chart
 st.divider()
 show_budget_donut_chart(revised_summary)
 
@@ -490,24 +628,7 @@ except Exception as e:
     st.warning(f"ไม่สามารถแสดงรายละเอียด pavement unit cost ได้: {e}")
 
 
-# =========================================================
-# Breakdown
-# =========================================================
 
-st.divider()
-st.subheader("4) Breakdown ของสูตร")
-breakdown = pd.DataFrame([
-    {"component": "Base Workload", "baseline": base_one["base_workload_cost"], "revised": revised_one["base_workload_cost"]},
-    {"component": "Factor", "baseline": base_one["factor_cost"], "revised": revised_one["factor_cost"]},
-    {"component": "Fixed Cost: ค่าเช่าเครื่องจักร", "baseline": base_one["machine_rental_cost"], "revised": revised_one["machine_rental_cost"]},
-    {"component": "Fixed Cost: งานตัดหญ้า", "baseline": base_one["grass_cost_estimate"], "revised": revised_one["grass_cost_estimate"]},
-    {"component": "Total Budget", "baseline": base_one["total_budget_model"], "revised": revised_one["total_budget_model"]},
-])
-breakdown["change"] = breakdown["revised"] - breakdown["baseline"]
-st.dataframe(
-    breakdown.style.format({"baseline": "{:,.0f}", "revised": "{:,.0f}", "change": "{:,.0f}"}),
-    use_container_width=True,
-)
 
 
 # =========================================================
@@ -541,6 +662,10 @@ selected_detail_cols = [
     "damage_probability",
     "unit_cost",
     "apply_damage_probability",
+    "base_value",
+    "total_quantity",
+    "workload_unit",
+    "workload_score",
     "base_workload_cost",
     "condition_profile",
     "factor_index_0_1",
@@ -554,6 +679,10 @@ st.dataframe(
         "quantity": "{:,.3f}",
         "damage_probability": "{:.6f}",
         "unit_cost": "{:,.0f}",
+        "base_value": "{:.4f}",
+        "total_quantity": "{:,.3f}",
+        "workload_unit": "{:,.6f}",
+        "workload_score": "{:,.6f}",
         "base_workload_cost": "{:,.0f}",
         "factor_index_0_1": "{:.4f}",
         "factor_cost": "{:,.0f}",
