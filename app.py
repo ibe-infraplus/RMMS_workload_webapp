@@ -493,6 +493,21 @@ k2.metric(
 k3.metric("National baseline budget", baht(float(baseline_summary["total_budget_model"].sum())))
 k4.metric("National revised budget", baht(float(revised_summary["total_budget_model"].sum())))
 
+# Breakdown of budget components in Section 4
+st.write("###### Breakdown งบประมาณส่วนต่างๆ")
+breakdown = pd.DataFrame([
+    {"component": "Base Workload", "baseline": base_one["base_workload_cost"], "revised": revised_one["base_workload_cost"]},
+    {"component": "Factor", "baseline": base_one["factor_cost"], "revised": revised_one["factor_cost"]},
+    {"component": "Fixed Cost: ค่าเช่าเครื่องจักร", "baseline": base_one["machine_rental_cost"], "revised": revised_one["machine_rental_cost"]},
+    {"component": "Fixed Cost: งานตัดหญ้า", "baseline": base_one["grass_cost_estimate"], "revised": revised_one["grass_cost_estimate"]},
+    {"component": "Total Budget", "baseline": base_one["total_budget_model"], "revised": revised_one["total_budget_model"]},
+])
+breakdown["change"] = breakdown["revised"] - breakdown["baseline"]
+st.dataframe(
+    breakdown.style.format({"baseline": "{:,.0f}", "revised": "{:,.0f}", "change": "{:,.0f}"}),
+    use_container_width=True,
+)
+
 chart_budget_df = pd.DataFrame({
     "scenario": ["Baseline", "Revised"],
     "budget": [base_one["total_budget_model"], revised_one["total_budget_model"]],
@@ -613,31 +628,14 @@ except Exception as e:
     st.warning(f"ไม่สามารถแสดงรายละเอียด pavement unit cost ได้: {e}")
 
 
-# =========================================================
-# Breakdown
-# =========================================================
 
-st.divider()
-st.subheader("5) Breakdown ของสูตร")
-breakdown = pd.DataFrame([
-    {"component": "Base Workload", "baseline": base_one["base_workload_cost"], "revised": revised_one["base_workload_cost"]},
-    {"component": "Factor", "baseline": base_one["factor_cost"], "revised": revised_one["factor_cost"]},
-    {"component": "Fixed Cost: ค่าเช่าเครื่องจักร", "baseline": base_one["machine_rental_cost"], "revised": revised_one["machine_rental_cost"]},
-    {"component": "Fixed Cost: งานตัดหญ้า", "baseline": base_one["grass_cost_estimate"], "revised": revised_one["grass_cost_estimate"]},
-    {"component": "Total Budget", "baseline": base_one["total_budget_model"], "revised": revised_one["total_budget_model"]},
-])
-breakdown["change"] = breakdown["revised"] - breakdown["baseline"]
-st.dataframe(
-    breakdown.style.format({"baseline": "{:,.0f}", "revised": "{:,.0f}", "change": "{:,.0f}"}),
-    use_container_width=True,
-)
 
 
 # =========================================================
 # Quantity change table
 # =========================================================
 
-st.subheader("6) Quantity ที่ user ปรับ")
+st.subheader("5) Quantity ที่ user ปรับ")
 st.dataframe(
     quantity_change_df.style.format({
         "default_quantity": "{:,.3f}",
@@ -654,7 +652,7 @@ st.dataframe(
 # Workload detail
 # =========================================================
 
-st.subheader("7) Workload Detail รายการคำนวณ")
+st.subheader("6) Workload Detail รายการคำนวณ")
 selected_detail = revised_detail.loc[revised_detail["dept3"].astype(int).eq(selected_dept3)].copy()
 selected_detail_cols = [
     "workload_item",
@@ -699,7 +697,7 @@ st.dataframe(
 # Summary all districts
 # =========================================================
 
-st.subheader("8) Summary ทุกแขวง")
+st.subheader("7) Summary ทุกแขวง")
 st.caption("Version นี้แสดงงบจริงจากสูตร model โดยยังไม่มีการ scale/cap งบประมาณ")
 summary_view = revised_summary.sort_values("total_budget_model", ascending=False)[[
     "dept3",
