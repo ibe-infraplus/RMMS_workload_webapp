@@ -4,7 +4,7 @@ export default function WorkloadDetailTable({ results }) {
   return (
     <>
       <div className="divider"></div>
-      <h2>7) Workload Detail รายการคำนวณ</h2>
+      <h2>6) Workload Detail รายการคำนวณ</h2>
       <div className="table-wrapper" style={{ overflowX: 'auto' }}>
         <table className="data-grid">
           <thead>

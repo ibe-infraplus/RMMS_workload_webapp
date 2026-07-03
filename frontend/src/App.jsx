@@ -200,8 +200,8 @@ function App() {
             </div>
 
             <Metrics results={results} />
-            <Charts results={results} />
             <DataTable results={results} />
+            <Charts results={results} />
             <WorkloadDetailTable results={results} />
             <SummaryAllDistrictsTable results={results} />
           </>

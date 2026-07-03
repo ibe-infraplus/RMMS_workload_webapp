@@ -5,8 +5,7 @@ export default function DataTable({ results }) {
 
   return (
     <>
-      <div className="divider"></div>
-      <h2>5) Breakdown ของสูตร</h2>
+      <h3 style={{marginTop: '20px', marginBottom: '10px'}}>Breakdown งบประมาณส่วนต่างๆ</h3>
       <div className="table-wrapper">
         <table className="data-grid">
           <thead>

@@ -4,7 +4,7 @@ export default function SummaryAllDistrictsTable({ results }) {
   return (
     <>
       <div className="divider"></div>
-      <h2>8) Summary ทุกแขวง</h2>
+      <h2>7) Summary ทุกแขวง</h2>
       <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>ข้อมูลจริงจากสูตร model โดยยังไม่มีการ scale/cap งบประมาณ</p>
       <div className="table-wrapper">
         <table className="data-grid">
