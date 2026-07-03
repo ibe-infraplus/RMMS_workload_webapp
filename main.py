@@ -102,6 +102,7 @@ class CalculateRequest(BaseModel):
     workload_overrides: Dict[str, Any] = Field(..., description="Map ของคอลัมน์ปริมาณงานที่ถูก Override ค่าความน่าจะเป็นและราคากลาง")
     quantity_updates: Dict[str, float] = Field(..., description="Map ของคอลัมน์ปริมาณงานที่ถูกกรอกแก้ไขตัวเลขใหม่")
     custom_config: Optional[List[Dict[str, Any]]] = Field(None, description="โครงสร้าง Parameter Grid ที่ถูกเพิ่ม/ลด/แก้ไข จากหน้าบ้าน")
+    budget_multiplier: Optional[float] = Field(None, description="ตัวคูณร่วม X")
 
 @app.get("/api/districts", tags=["Granular API"], summary="ดึงรายชื่อแขวงทางหลวงทั้งหมด")
 def get_all_districts():
@@ -164,9 +165,9 @@ def get_global_config():
 def calculate_workload(req: CalculateRequest):
     master = get_master_data()
     
-    # Calculate baseline (no overrides, no quantity updates)
+    # Calculate baseline (no overrides, no quantity updates, static default configuration)
     base_summary, base_detail, base_master = build_results(
-        master.copy(), "data", req.max_factor_uplift, req.use_damage_probability, {}, custom_config=req.custom_config
+        master.copy(), "data", max_factor_uplift=0.15, use_damage_probability=True, workload_overrides={}, custom_config=None, budget_multiplier=req.budget_multiplier
     )
 
     # Calculate revised
@@ -177,7 +178,7 @@ def calculate_workload(req: CalculateRequest):
             revised_master.loc[mask, q_col] = val
 
     revised_summary, revised_detail, revised_master_scored = build_results(
-        revised_master, "data", req.max_factor_uplift, req.use_damage_probability, req.workload_overrides, custom_config=req.custom_config
+        revised_master, "data", req.max_factor_uplift, req.use_damage_probability, req.workload_overrides, custom_config=req.custom_config, budget_multiplier=req.budget_multiplier
     )
 
     # Extract pavement workload score from details

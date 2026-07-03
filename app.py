@@ -181,20 +181,20 @@ with st.sidebar:
     st.header("ตั้งค่า")
     data_dir = st.text_input("Data folder", value="data")
     damage_mode = st.selectbox(
-        "Use Damage Probability",
+        "Use Damage Probability (Revised)",
         options=["On", "Off"],
         index=0,
     )
     use_damage_probability = damage_mode == "On"
     max_factor_uplift = st.slider(
-        "Max Factor Uplift",
+        "Max Factor Uplift (Revised)",
         min_value=0.0,
         max_value=0.50,
         value=float(MAX_FACTOR_UPLIFT),
         step=0.01,
         help="Max Factor Uplift คือ เพดานสูงสุดของการเพิ่มงบประมาณที่คำนวณจากปัจจัยแวดล้อม เช่น ปริมาณจราจร สภาพพื้นที่ ฯลฯ โดยจะนำไปคูณกับ Base Cost เพื่อเพิ่มงบให้สอดคล้องกับความยากง่ายของพื้นที่"
     )
-    st.markdown("**Workload Parameter Grid**")
+    st.markdown("**Workload Parameter Grid (Revised)**")
     param_df = build_workload_parameter_table(data_dir)
     editable_param_df = st.data_editor(
         param_df,
@@ -263,10 +263,10 @@ except Exception as e:
 baseline_summary, baseline_detail, baseline_master = compute_baseline(
     master,
     data_dir,
-    max_factor_uplift,
-    use_damage_probability,
-    workload_overrides,
-    budget_multiplier,
+    max_factor_uplift=0.15,
+    use_damage_probability=True,
+    workload_overrides={},
+    budget_multiplier=budget_multiplier,
 )
 
 
