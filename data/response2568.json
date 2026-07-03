@@ -7528,7 +7528,7 @@
                 "km_start": "205+136",
                 "km_end": "208+075",
                 "main_way": "LT+RT",
-                "distance": 14.911
+                "distance": 2.939
             }
         ]
     },
@@ -7849,7 +7849,7 @@
                 "km_start": "223+481",
                 "km_end": "224+995",
                 "main_way": "LT+RT",
-                "distance": 14.1
+                "distance": 1.514
             }
         ]
     },
@@ -11847,7 +11847,7 @@
                 "km_start": "60+750",
                 "km_end": "60+875",
                 "main_way": "LT",
-                "distance": 31.458
+                "distance": 0.125
             },
             {
                 "Route_id": "43",
@@ -11856,7 +11856,7 @@
                 "km_start": "60+567",
                 "km_end": "60+675",
                 "main_way": "LT+RT",
-                "distance": 31.458
+                "distance": 0.108
             }
         ]
     },
@@ -15306,7 +15306,7 @@
                 "km_start": "1,300+100",
                 "km_end": "1,306+602",
                 "main_way": "RT",
-                "distance": 31.912
+                "distance": 6.502
             }
         ]
     },
