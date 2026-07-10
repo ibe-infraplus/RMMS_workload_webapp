@@ -749,13 +749,55 @@ st.dataframe(
 # Download
 # =========================================================
 
-csv = revised_summary.to_csv(index=False).encode("utf-8-sig")
-st.download_button(
-    "Download revised summary CSV",
-    data=csv,
-    file_name="revised_workload_cost_summary_no_cap.csv",
-    mime="text/csv",
-)
+# Helper to generate Excel byte stream in-memory
+def generate_excel_download_stream(base_summary, revised_summary, revised_detail, parameter_df):
+    import io
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        summary_df = base_summary[["dept3", "division_name", "district_name", "workload_score", "total_budget_model"]].copy()
+        summary_df = summary_df.rename(columns={"workload_score": "baseline_workload_score", "total_budget_model": "baseline_total_budget"})
+        
+        rev_sub = revised_summary[["dept3", "workload_score", "total_budget_model"]].copy()
+        rev_sub = rev_sub.rename(columns={"workload_score": "revised_workload_score", "total_budget_model": "revised_total_budget"})
+        
+        comparison = summary_df.merge(rev_sub, on="dept3", how="inner")
+        comparison["workload_score_diff"] = comparison["revised_workload_score"] - comparison["baseline_workload_score"]
+        comparison["total_budget_diff"] = comparison["revised_total_budget"] - comparison["baseline_total_budget"]
+        comparison.to_excel(writer, index=False, sheet_name="Summary_Comparison")
+        
+        revised_detail.to_excel(writer, index=False, sheet_name="Revised_Detail_All")
+        
+        parameter_df.to_excel(writer, index=False, sheet_name="Parameter_Grid")
+    return output.getvalue()
+
+col_dl1, col_dl2 = st.columns(2)
+with col_dl1:
+    csv = revised_summary.to_csv(index=False).encode("utf-8-sig")
+    st.download_button(
+        "Download revised summary CSV",
+        data=csv,
+        file_name="revised_workload_cost_summary_no_cap.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+
+with col_dl2:
+    try:
+        excel_data = generate_excel_download_stream(
+            baseline_summary, 
+            revised_summary, 
+            revised_detail, 
+            editable_param_df
+        )
+        st.download_button(
+            "Export to Excel (xlsx)",
+            data=excel_data,
+            file_name="revised_workload_cost_model.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+        )
+    except Exception as e:
+        st.error(f"Error preparing Excel download: {e}")
 
 
 # =========================================================

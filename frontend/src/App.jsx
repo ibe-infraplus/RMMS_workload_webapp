@@ -87,6 +87,32 @@ function App() {
     return () => clearTimeout(timeoutId);
   }, [selectedDept3, maxFactorUplift, useDamageProbability, workloadOverrides, quantityUpdates, currentConfig, budgetMultiplier]);
 
+  const exportToExcel = () => {
+    if (!selectedDept3 || !initData) return;
+    axios.post(`${API_BASE}/export_excel`, {
+      selected_dept3: selectedDept3,
+      max_factor_uplift: maxFactorUplift,
+      use_damage_probability: useDamageProbability,
+      workload_overrides: workloadOverrides,
+      quantity_updates: quantityUpdates,
+      custom_config: currentConfig,
+      budget_multiplier: budgetMultiplier
+    }, { responseType: 'blob' })
+    .then(res => {
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'revised_workload_cost_model.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Failed to export Excel file from backend.");
+    });
+  };
+
   if (loadingInit) {
     return (
       <div className="loader-container">
@@ -128,9 +154,12 @@ function App() {
             />
           </div>
 
-          <div style={{marginLeft: 'auto'}}>
+          <div style={{marginLeft: 'auto', display: 'flex', gap: '12px'}}>
             <button className="btn" onClick={() => setIsParamModalOpen(true)}>
                ตั้งค่า Workload Parameter Grid (Revised)
+            </button>
+            <button className="btn" style={{backgroundColor: '#10b981', color: 'white'}} onClick={exportToExcel}>
+               Export to Excel
             </button>
           </div>
         </div>

@@ -251,6 +251,89 @@ def calculate_workload(req: CalculateRequest):
 
     return replace_nan(res)
 
+
+@app.post("/api/export_excel")
+def export_workload_excel(req: CalculateRequest):
+    from fastapi.responses import StreamingResponse
+    import io
+    master = get_master_data()
+    
+    # 1. Calculate baseline (no overrides, no quantity updates)
+    base_summary, base_detail, base_master = build_results(
+        master.copy(), "data", max_factor_uplift=0.15, use_damage_probability=True, workload_overrides={}, custom_config=None, budget_multiplier=req.budget_multiplier
+    )
+
+    # 2. Calculate revised
+    revised_master = master.copy()
+    mask = revised_master["dept3"].astype(int) == req.selected_dept3
+    for q_col, val in req.quantity_updates.items():
+        if q_col in revised_master.columns:
+            revised_master.loc[mask, q_col] = val
+
+    revised_summary, revised_detail, revised_master_scored = build_results(
+        revised_master, "data", req.max_factor_uplift, req.use_damage_probability, req.workload_overrides, custom_config=req.custom_config, budget_multiplier=req.budget_multiplier
+    )
+
+    # 3. Create Excel byte stream
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Sheet 1: Summary comparison
+        # Let's combine baseline and revised summary
+        summary_df = base_summary[["dept3", "division_name", "district_name", "workload_score", "total_budget_model"]].copy()
+        summary_df = summary_df.rename(columns={"workload_score": "baseline_workload_score", "total_budget_model": "baseline_total_budget"})
+        
+        rev_sub = revised_summary[["dept3", "workload_score", "total_budget_model"]].copy()
+        rev_sub = rev_sub.rename(columns={"workload_score": "revised_workload_score", "total_budget_model": "revised_total_budget"})
+        
+        comparison = summary_df.merge(rev_sub, on="dept3", how="inner")
+        # Add difference columns
+        comparison["workload_score_diff"] = comparison["revised_workload_score"] - comparison["baseline_workload_score"]
+        comparison["total_budget_diff"] = comparison["revised_total_budget"] - comparison["baseline_total_budget"]
+        comparison.to_excel(writer, index=False, sheet_name="Summary_Comparison")
+        
+        # Sheet 2: Detailed Workload
+        revised_detail.to_excel(writer, index=False, sheet_name="Revised_Detail_All")
+        
+        # Sheet 3: Parameters
+        if req.custom_config:
+            param_df = pd.DataFrame(req.custom_config)
+        else:
+            # Fallback to current configurations
+            param_grid = []
+            lookup = damage_lookup("data")
+            for cfg in WORKLOAD_CONFIG:
+                p, unit_cost = get_dynamic_unit_cost_and_probability(cfg, lookup, data_dir="data")
+                # Apply overrides if present
+                q_col = cfg.get("quantity_col", "")
+                if q_col in req.workload_overrides:
+                    p = req.workload_overrides[q_col].get("damage_probability", p)
+                    unit_cost = req.workload_overrides[q_col].get("unit_cost", unit_cost)
+                    apply_dp = req.workload_overrides[q_col].get("apply_damage_probability", cfg.get("apply_damage_probability", True))
+                else:
+                    apply_dp = cfg.get("apply_damage_probability", True)
+                param_grid.append({
+                    "workload_item": cfg.get("item", ""),
+                    "category": cfg.get("category", ""),
+                    "quantity_col": q_col,
+                    "unit": cfg.get("unit", ""),
+                    "damage_probability": p,
+                    "unit_cost": unit_cost,
+                    "apply_damage_probability": apply_dp
+                })
+            param_df = pd.DataFrame(param_grid)
+        param_df.to_excel(writer, index=False, sheet_name="Parameter_Grid")
+
+    output.seek(0)
+    
+    headers = {
+        'Content-Disposition': 'attachment; filename="revised_workload_cost_model.xlsx"'
+    }
+    return StreamingResponse(
+        output,
+        headers=headers,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 class SingleCalculateRequest(BaseModel):
     max_factor_uplift: float = Field(0.15, description="เพดานสูงสุดของ Scaling Factor (Condition Index)")
     use_damage_probability: bool = Field(True, description="เปิด/ปิดการคูณ Damage Probability")
