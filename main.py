@@ -279,13 +279,25 @@ def export_workload_excel(req: CalculateRequest):
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         # Sheet 1: Summary comparison
         # Let's combine baseline and revised summary
-        summary_df = base_summary[["dept3", "division_name", "district_name", "workload_score", "total_budget_model"]].copy()
-        summary_df = summary_df.rename(columns={"workload_score": "baseline_workload_score", "total_budget_model": "baseline_total_budget"})
+        summary_df = base_summary[["dept3", "division_name", "district_name", "workload_score", "machine_rental_cost", "grass_cost_estimate", "fixed_cost", "total_budget_model"]].copy()
+        summary_df = summary_df.rename(columns={
+            "workload_score": "baseline_workload_score",
+            "machine_rental_cost": "baseline_machine_rental",
+            "grass_cost_estimate": "baseline_grass_cutting",
+            "fixed_cost": "baseline_fixed_cost",
+            "total_budget_model": "baseline_total_budget"
+        })
         
-        rev_sub = revised_summary[["dept3", "workload_score", "total_budget_model"]].copy()
-        rev_sub = rev_sub.rename(columns={"workload_score": "revised_workload_score", "total_budget_model": "revised_total_budget"})
+        rev_sub = revised_summary[["dept3", "workload_score", "machine_rental_cost", "grass_cost_estimate", "fixed_cost", "total_budget_model"]].copy()
+        rev_sub = rev_sub.rename(columns={
+            "workload_score": "revised_workload_score",
+            "machine_rental_cost": "revised_machine_rental",
+            "grass_cost_estimate": "revised_grass_cutting",
+            "fixed_cost": "revised_fixed_cost",
+            "total_budget_model": "revised_total_budget"
+        })
         
-        comparison = summary_df.merge(rev_sub, on="dept3", how="inner")
+        comparison = summary_df.merge(rev_sub, on=["dept3", "division_name", "district_name"], how="inner")
         # Add difference columns
         comparison["workload_score_diff"] = comparison["revised_workload_score"] - comparison["baseline_workload_score"]
         comparison["total_budget_diff"] = comparison["revised_total_budget"] - comparison["baseline_total_budget"]
