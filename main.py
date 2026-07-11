@@ -95,6 +95,53 @@ def get_initial_data():
         "master_columns": list(master.columns)
     }
 
+FRAMEWORK_THAI_NAMES = {
+    "pavement": "งานผิวทาง",
+    "traffic": "งานจราจรสงเคราะห์",
+    "drainage": "งานระบายน้ำ",
+    "others": "งานเขตทางและอื่นๆ",
+    "bridge": "งานสะพาน",
+    "shoulder": "งานไหล่ทางและทางเชื่อม"
+}
+
+CATEGORY_MAPPING = {
+    "ผิวจราจร/ระยะทางต่อ 2 ช่องจราจร": "pavement",
+    "สะพานลอยคนเดินข้าม": "bridge",
+    "สะพานข้ามคลอง < 20 ม.": "bridge",
+    "ท่อลอด": "bridge",
+    "ศาลาทางหลวง": "others",
+    "ไฟจราจร": "traffic",
+    "ไฟทางข้าม": "traffic",
+    "ไฟแสงสว่างกิ่งเดี่ยวกิ่งคู่": "traffic",
+    "ไฟแสงสว่าง Hi-Mast": "traffic",
+    "ไฟกระพริบ": "traffic",
+    "ป้ายจราจร": "traffic",
+    "ท่อระบายน้ำ": "drainage",
+    "ทางระบายน้ำ": "drainage"
+}
+
+def get_actual_category_breakdown(summary_row, detail_rows_df):
+    grass_cost = float(summary_row.get("grass_cost_estimate", 0.0))
+    machine_rental = float(summary_row.get("machine_rental_cost", 0.0))
+    
+    actuals = {
+        "pavement": 0.0,
+        "traffic": 0.0,
+        "drainage": 0.0,
+        "others": grass_cost + machine_rental,
+        "bridge": 0.0,
+        "shoulder": 0.0
+    }
+    
+    for _, row in detail_rows_df.iterrows():
+        item = row["workload_item"]
+        cost = float(row.get("workload_plus_factor", 0.0))
+        cat = CATEGORY_MAPPING.get(item, "others")
+        if cat in actuals:
+            actuals[cat] += cost
+            
+    return actuals
+
 class CalculateRequest(BaseModel):
     selected_dept3: int = Field(..., description="รหัสแขวงทางหลวง (เช่น 100 for รหัสเต็ม 10000)")
     max_factor_uplift: float = Field(0.15, description="เพดานสูงสุดของ Scaling Factor (Condition Index)")
@@ -103,6 +150,8 @@ class CalculateRequest(BaseModel):
     quantity_updates: Dict[str, float] = Field(..., description="Map ของคอลัมน์ปริมาณงานที่ถูกกรอกแก้ไขตัวเลขใหม่")
     custom_config: Optional[List[Dict[str, Any]]] = Field(None, description="โครงสร้าง Parameter Grid ที่ถูกเพิ่ม/ลด/แก้ไข จากหน้าบ้าน")
     budget_multiplier: Optional[float] = Field(None, description="ตัวคูณร่วม X")
+    budget_framework: Optional[Dict[str, float]] = Field(None, description="กรอบสัดส่วนงบประมาณ (เช่น {'pavement': 50.0, 'traffic': 15.0, ...})")
+
 
 @app.get("/api/districts", tags=["Granular API"], summary="ดึงรายชื่อแขวงทางหลวงทั้งหมด")
 def get_all_districts():
@@ -218,8 +267,47 @@ def calculate_workload(req: CalculateRequest):
             val = float(pd.to_numeric(pd.Series([selected_row.get(q_col, 0)]), errors="coerce").fillna(0).iloc[0])
             default_quantities[q_col] = val
 
+    # Compute budget framework comparison
+    base_detail_one = base_detail[base_detail["dept3"].astype(int) == req.selected_dept3]
+    base_actuals = get_actual_category_breakdown(base_one, base_detail_one)
+    revised_actuals = get_actual_category_breakdown(revised_one, revised_detail_one)
+    
+    fw_pct = req.budget_framework or {
+        "pavement": 50.0,
+        "traffic": 15.0,
+        "drainage": 15.0,
+        "others": 10.0,
+        "bridge": 5.0,
+        "shoulder": 5.0
+    }
+    
+    framework_table = []
+    total_base_budget = float(base_one["total_budget_model"])
+    total_rev_budget = float(revised_one["total_budget_model"])
+    
+    for key, th_name in FRAMEWORK_THAI_NAMES.items():
+        pct_target = fw_pct.get(key, 0.0)
+        target_budget_base = total_base_budget * (pct_target / 100.0)
+        target_budget_rev = total_rev_budget * (pct_target / 100.0)
+        
+        act_base = base_actuals.get(key, 0.0)
+        act_rev = revised_actuals.get(key, 0.0)
+        
+        framework_table.append({
+            "key": key,
+            "category_name": th_name,
+            "target_pct": pct_target,
+            "baseline_target": target_budget_base,
+            "baseline_actual": act_base,
+            "baseline_diff": act_base - target_budget_base,
+            "revised_target": target_budget_rev,
+            "revised_actual": act_rev,
+            "revised_diff": act_rev - target_budget_rev
+        })
+
     # Prepare response
     res = {
+        "framework_comparison": framework_table,
         "metrics": {
             "baseline_total": float(base_one["total_budget_model"]),
             "revised_total": float(revised_one["total_budget_model"]),
@@ -346,6 +434,45 @@ def export_workload_excel(req: CalculateRequest):
                 })
             param_df = pd.DataFrame(param_grid)
         param_df.to_excel(writer, index=False, sheet_name="Parameter_Grid")
+
+        # Sheet 5: Budget Framework Comparison (Selected District)
+        base_one_ex = base_summary[base_summary["dept3"].astype(int) == req.selected_dept3].iloc[0]
+        rev_one_ex = revised_summary[revised_summary["dept3"].astype(int) == req.selected_dept3].iloc[0]
+        base_detail_ex = base_detail[base_detail["dept3"].astype(int) == req.selected_dept3]
+        rev_detail_ex = revised_detail[revised_detail["dept3"].astype(int) == req.selected_dept3]
+        
+        base_actuals_ex = get_actual_category_breakdown(base_one_ex, base_detail_ex)
+        rev_actuals_ex = get_actual_category_breakdown(rev_one_ex, rev_detail_ex)
+        
+        fw_pct = req.budget_framework or {
+            "pavement": 50.0,
+            "traffic": 15.0,
+            "drainage": 15.0,
+            "others": 10.0,
+            "bridge": 5.0,
+            "shoulder": 5.0
+        }
+        
+        fw_rows = []
+        for key, th_name in FRAMEWORK_THAI_NAMES.items():
+            pct_target = fw_pct.get(key, 0.0)
+            target_base = float(base_one_ex["total_budget_model"]) * (pct_target / 100.0)
+            target_rev = float(rev_one_ex["total_budget_model"]) * (pct_target / 100.0)
+            act_base = base_actuals_ex.get(key, 0.0)
+            act_rev = rev_actuals_ex.get(key, 0.0)
+            
+            fw_rows.append({
+                "หมวดหมู่งาน": th_name,
+                "สัดส่วนเป้าหมาย (%)": pct_target,
+                "งบประมาณเป้าหมาย Baseline (บาท)": target_base,
+                "งบประมาณคำนวณจริง Baseline (บาท)": act_base,
+                "ส่วนต่าง Baseline (บาท)": act_base - target_base,
+                "งบประมาณเป้าหมาย Revised (บาท)": target_rev,
+                "งบประมาณคำนวณจริง Revised (บาท)": act_rev,
+                "ส่วนต่าง Revised (บาท)": act_rev - target_rev
+            })
+        fw_df = pd.DataFrame(fw_rows)
+        fw_df.to_excel(writer, index=False, sheet_name="Budget_Framework")
 
     output.seek(0)
     

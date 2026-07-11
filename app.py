@@ -194,6 +194,27 @@ with st.sidebar:
         step=0.01,
         help="Max Factor Uplift คือ เพดานสูงสุดของการเพิ่มงบประมาณที่คำนวณจากปัจจัยแวดล้อม เช่น ปริมาณจราจร สภาพพื้นที่ ฯลฯ โดยจะนำไปคูณกับ Base Cost เพื่อเพิ่มงบให้สอดคล้องกับความยากง่ายของพื้นที่"
     )
+    with st.expander("กรอบสัดส่วนงบประมาณ (%)", expanded=True):
+        fw_pavement = st.number_input("งานผิวทาง (%)", min_value=0.0, max_value=100.0, value=50.0, step=1.0)
+        fw_traffic = st.number_input("งานจราจรสงเคราะห์ (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0)
+        fw_drainage = st.number_input("งานระบายน้ำ (%)", min_value=0.0, max_value=100.0, value=15.0, step=1.0)
+        fw_others = st.number_input("งานเขตทางและอื่นๆ (%)", min_value=0.0, max_value=100.0, value=10.0, step=1.0)
+        fw_bridge = st.number_input("งานสะพาน (%)", min_value=0.0, max_value=100.0, value=5.0, step=1.0)
+        fw_shoulder = st.number_input("งานไหล่ทางและทางเชื่อม (%)", min_value=0.0, max_value=100.0, value=5.0, step=1.0)
+        
+        sum_pct = fw_pavement + fw_traffic + fw_drainage + fw_others + fw_bridge + fw_shoulder
+        if abs(sum_pct - 100.0) > 0.01:
+            st.warning(f"สัดส่วนรวมต้องเท่ากับ 100% (ปัจจุบัน: {sum_pct:.1f}%)")
+            
+    pct_config = {
+        "pavement": fw_pavement,
+        "traffic": fw_traffic,
+        "drainage": fw_drainage,
+        "others": fw_others,
+        "bridge": fw_bridge,
+        "shoulder": fw_shoulder
+    }
+
     st.markdown("**Workload Parameter Grid (Revised)**")
     param_df = build_workload_parameter_table(data_dir)
     editable_param_df = st.data_editor(
@@ -533,6 +554,83 @@ st.dataframe(
     use_container_width=True,
 )
 
+# Budget Framework Comparison
+st.write("###### เปรียบเทียบงบประมาณตามกรอบสัดส่วนกับคำนวณจริง (Budget Framework Comparison)")
+
+fw_thai_names_local = {
+    "pavement": "งานผิวทาง",
+    "traffic": "งานจราจรสงเคราะห์",
+    "drainage": "งานระบายน้ำ",
+    "others": "งานเขตทางและอื่นๆ",
+    "bridge": "งานสะพาน",
+    "shoulder": "งานไหล่ทางและทางเชื่อม"
+}
+
+category_mapping_local = {
+    "ผิวจราจร/ระยะทางต่อ 2 ช่องจราจร": "pavement",
+    "สะพานลอยคนเดินข้าม": "bridge",
+    "สะพานข้ามคลอง < 20 ม.": "bridge",
+    "ท่อลอด": "bridge",
+    "ศาลาทางหลวง": "others",
+    "ไฟจราจร": "traffic",
+    "ไฟทางข้าม": "traffic",
+    "ไฟแสงสว่างกิ่งเดี่ยวกิ่งคู่": "traffic",
+    "ไฟแสงสว่าง Hi-Mast": "traffic",
+    "ไฟกระพริบ": "traffic",
+    "ป้ายจราจร": "traffic",
+    "ท่อระบายน้ำ": "drainage",
+    "ทางระบายน้ำ": "drainage"
+}
+
+def get_actual_breakdown_local(summary_row, detail_rows_df):
+    grass_cost = float(summary_row.get("grass_cost_estimate", 0.0))
+    machine_rental = float(summary_row.get("machine_rental_cost", 0.0))
+    actuals = {
+        "pavement": 0.0,
+        "traffic": 0.0,
+        "drainage": 0.0,
+        "others": grass_cost + machine_rental,
+        "bridge": 0.0,
+        "shoulder": 0.0
+    }
+    for _, r in detail_rows_df.iterrows():
+        item = r["workload_item"]
+        cost = float(r.get("workload_plus_factor", 0.0))
+        cat = category_mapping_local.get(item, "others")
+        if cat in actuals:
+            actuals[cat] += cost
+    return actuals
+
+base_actuals = get_actual_breakdown_local(base_one, baseline_detail[baseline_detail["dept3"].astype(int) == int(selected_dept3)])
+rev_actuals = get_actual_breakdown_local(revised_one, revised_detail[revised_detail["dept3"].astype(int) == int(selected_dept3)])
+
+fw_rows = []
+for key, th_name in fw_thai_names_local.items():
+    pct_target = pct_config.get(key, 0.0)
+    target_base = float(base_one["total_budget_model"]) * (pct_target / 100.0)
+    target_rev = float(revised_one["total_budget_model"]) * (pct_target / 100.0)
+    act_base = base_actuals.get(key, 0.0)
+    act_rev = rev_actuals.get(key, 0.0)
+    
+    fw_rows.append({
+        "หมวดหมู่งาน": th_name,
+        "สัดส่วนตามกรอบ (%)": f"{pct_target:.1f}%",
+        "งบเป้าหมาย (บาท)": target_rev,
+        "งบคำนวณจริง (บาท)": act_rev,
+        "ส่วนต่าง (บาท)": act_rev - target_rev
+    })
+    
+fw_df = pd.DataFrame(fw_rows)
+st.dataframe(
+    fw_df.style.format({
+        "งบเป้าหมาย (บาท)": "{:,.2f}",
+        "งบคำนวณจริง (บาท)": "{:,.2f}",
+        "ส่วนต่าง (บาท)": "{:,.2f}"
+    }),
+    use_container_width=True
+)
+
+
 chart_budget_df = pd.DataFrame({
     "scenario": ["Baseline", "Revised"],
     "budget": [base_one["total_budget_model"], revised_one["total_budget_model"]],
@@ -750,9 +848,54 @@ st.dataframe(
 # =========================================================
 
 # Helper to generate Excel byte stream in-memory
-def generate_excel_download_stream(base_summary, revised_summary, revised_detail, parameter_df):
+def generate_excel_download_stream(base_summary, revised_summary, base_detail, revised_detail, parameter_df, pct_config):
     import io
     output = io.BytesIO()
+    
+    fw_thai_names = {
+        "pavement": "งานผิวทาง",
+        "traffic": "งานจราจรสงเคราะห์",
+        "drainage": "งานระบายน้ำ",
+        "others": "งานเขตทางและอื่นๆ",
+        "bridge": "งานสะพาน",
+        "shoulder": "งานไหล่ทางและทางเชื่อม"
+    }
+
+    category_mapping = {
+        "ผิวจราจร/ระยะทางต่อ 2 ช่องจราจร": "pavement",
+        "สะพานลอยคนเดินข้าม": "bridge",
+        "สะพานข้ามคลอง < 20 ม.": "bridge",
+        "ท่อลอด": "bridge",
+        "ศาลาทางหลวง": "others",
+        "ไฟจราจร": "traffic",
+        "ไฟทางข้าม": "traffic",
+        "ไฟแสงสว่างกิ่งเดี่ยวกิ่งคู่": "traffic",
+        "ไฟแสงสว่าง Hi-Mast": "traffic",
+        "ไฟกระพริบ": "traffic",
+        "ป้ายจราจร": "traffic",
+        "ท่อระบายน้ำ": "drainage",
+        "ทางระบายน้ำ": "drainage"
+    }
+
+    def get_actual_breakdown(summary_row, detail_rows_df):
+        grass_cost = float(summary_row.get("grass_cost_estimate", 0.0))
+        machine_rental = float(summary_row.get("machine_rental_cost", 0.0))
+        actuals = {
+            "pavement": 0.0,
+            "traffic": 0.0,
+            "drainage": 0.0,
+            "others": grass_cost + machine_rental,
+            "bridge": 0.0,
+            "shoulder": 0.0
+        }
+        for _, r in detail_rows_df.iterrows():
+            item = r["workload_item"]
+            cost = float(r.get("workload_plus_factor", 0.0))
+            cat = category_mapping.get(item, "others")
+            if cat in actuals:
+                actuals[cat] += cost
+        return actuals
+
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         summary_df = base_summary[["dept3", "division_name", "district_name", "workload_score", "machine_rental_cost", "grass_cost_estimate", "fixed_cost", "total_budget_model"]].copy()
         summary_df = summary_df.rename(columns={
@@ -791,8 +934,41 @@ def generate_excel_download_stream(base_summary, revised_summary, revised_detail
         # Sheet 3: Detailed Workload (All)
         revised_detail.to_excel(writer, index=False, sheet_name="Revised_Detail_All")
         
+        # Sheet 4: Parameters
         parameter_df.to_excel(writer, index=False, sheet_name="Parameter_Grid")
+
+        # Sheet 5: Budget Framework
+        base_one_ex = base_summary[base_summary["dept3"].astype(int) == int(selected_dept3)].iloc[0]
+        rev_one_ex = revised_summary[revised_summary["dept3"].astype(int) == int(selected_dept3)].iloc[0]
+        base_detail_ex = base_detail[base_detail["dept3"].astype(int) == int(selected_dept3)]
+        rev_detail_ex = revised_detail[revised_detail["dept3"].astype(int) == int(selected_dept3)]
+        
+        base_actuals_ex = get_actual_breakdown(base_one_ex, base_detail_ex)
+        rev_actuals_ex = get_actual_breakdown(rev_one_ex, rev_detail_ex)
+        
+        fw_rows = []
+        for key, th_name in fw_thai_names.items():
+            pct_target = pct_config.get(key, 0.0)
+            target_base = float(base_one_ex["total_budget_model"]) * (pct_target / 100.0)
+            target_rev = float(rev_one_ex["total_budget_model"]) * (pct_target / 100.0)
+            act_base = base_actuals_ex.get(key, 0.0)
+            act_rev = rev_actuals_ex.get(key, 0.0)
+            
+            fw_rows.append({
+                "หมวดหมู่งาน": th_name,
+                "สัดส่วนเป้าหมาย (%)": pct_target,
+                "งบประมาณเป้าหมาย Baseline (บาท)": target_base,
+                "งบประมาณคำนวณจริง Baseline (บาท)": act_base,
+                "ส่วนต่าง Baseline (บาท)": act_base - target_base,
+                "งบประมาณเป้าหมาย Revised (บาท)": target_rev,
+                "งบประมาณคำนวณจริง Revised (บาท)": act_rev,
+                "ส่วนต่าง Revised (บาท)": act_rev - target_rev
+            })
+        fw_df = pd.DataFrame(fw_rows)
+        fw_df.to_excel(writer, index=False, sheet_name="Budget_Framework")
+
     return output.getvalue()
+
 
 col_dl1, col_dl2 = st.columns(2)
 with col_dl1:
@@ -810,8 +986,10 @@ with col_dl2:
         excel_data = generate_excel_download_stream(
             baseline_summary, 
             revised_summary, 
+            baseline_detail,
             revised_detail, 
-            editable_param_df
+            editable_param_df,
+            pct_config
         )
         st.download_button(
             "Export to Excel (xlsx)",

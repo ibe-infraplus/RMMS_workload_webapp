@@ -12,6 +12,7 @@ import DataTable from './components/DataTable';
 import WorkloadDetailTable from './components/WorkloadDetailTable';
 import SummaryAllDistrictsTable from './components/SummaryAllDistrictsTable';
 import WorkloadCharts from './components/WorkloadCharts';
+import FrameworkTable from './components/FrameworkTable';
 
 const API_BASE = '/api';
 
@@ -27,6 +28,14 @@ function App() {
   const [workloadOverrides, setWorkloadOverrides] = useState({});
   const [currentConfig, setCurrentConfig] = useState([]);
   const [budgetMultiplier, setBudgetMultiplier] = useState(100.0);
+  const [budgetFramework, setBudgetFramework] = useState({
+    pavement: 50,
+    traffic: 15,
+    drainage: 15,
+    others: 10,
+    bridge: 5,
+    shoulder: 5
+  });
   
   // UI State
   const [isParamModalOpen, setIsParamModalOpen] = useState(false);
@@ -74,7 +83,8 @@ function App() {
         workload_overrides: workloadOverrides,
         quantity_updates: quantityUpdates,
         custom_config: currentConfig,
-        budget_multiplier: budgetMultiplier
+        budget_multiplier: budgetMultiplier,
+        budget_framework: budgetFramework
       }).then(res => {
         setResults(res.data);
         setCalculating(false);
@@ -85,7 +95,7 @@ function App() {
     }, 500); // 500ms Debounce
 
     return () => clearTimeout(timeoutId);
-  }, [selectedDept3, maxFactorUplift, useDamageProbability, workloadOverrides, quantityUpdates, currentConfig, budgetMultiplier]);
+  }, [selectedDept3, maxFactorUplift, useDamageProbability, workloadOverrides, quantityUpdates, currentConfig, budgetMultiplier, budgetFramework]);
 
   const exportToExcel = () => {
     if (!selectedDept3 || !initData) return;
@@ -96,7 +106,8 @@ function App() {
       workload_overrides: workloadOverrides,
       quantity_updates: quantityUpdates,
       custom_config: currentConfig,
-      budget_multiplier: budgetMultiplier
+      budget_multiplier: budgetMultiplier,
+      budget_framework: budgetFramework
     }, { responseType: 'blob' })
     .then(res => {
       const url = window.URL.createObjectURL(new Blob([res.data]));
@@ -131,8 +142,115 @@ function App() {
   });
 
   return (
-    <div className="app-container">
-      <div className="main-content">
+    <div className="app-container" style={{display: 'flex', gap: '24px', alignItems: 'flex-start', padding: '24px'}}>
+      
+      {/* Sidebar Panel */}
+      <div className="sidebar-panel" style={{
+        width: '300px',
+        flexShrink: 0,
+        padding: '20px',
+        backgroundColor: 'var(--bg-card)',
+        borderRadius: 'var(--radius)',
+        border: '1px solid var(--border-color)',
+        height: 'fit-content'
+      }}>
+        <h3 style={{marginTop: 0, marginBottom: '16px'}}>กรอบสัดส่วนงบประมาณ (%)</h3>
+        
+        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+          <div className="form-group" style={{marginBottom: 0}}>
+            <label style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem'}}>
+              <span>งานผิวทาง</span>
+              <span style={{fontWeight: 'bold', color: 'var(--accent)'}}>{budgetFramework.pavement}%</span>
+            </label>
+            <input 
+              type="range" min="0" max="100" step="1" 
+              value={budgetFramework.pavement} 
+              onChange={e => setBudgetFramework(prev => ({ ...prev, pavement: parseFloat(e.target.value) || 0 }))} 
+              style={{width: '100%'}}
+            />
+          </div>
+
+          <div className="form-group" style={{marginBottom: 0}}>
+            <label style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem'}}>
+              <span>งานจราจรสงเคราะห์</span>
+              <span style={{fontWeight: 'bold', color: 'var(--accent)'}}>{budgetFramework.traffic}%</span>
+            </label>
+            <input 
+              type="range" min="0" max="100" step="1" 
+              value={budgetFramework.traffic} 
+              onChange={e => setBudgetFramework(prev => ({ ...prev, traffic: parseFloat(e.target.value) || 0 }))} 
+              style={{width: '100%'}}
+            />
+          </div>
+
+          <div className="form-group" style={{marginBottom: 0}}>
+            <label style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem'}}>
+              <span>งานระบายน้ำ</span>
+              <span style={{fontWeight: 'bold', color: 'var(--accent)'}}>{budgetFramework.drainage}%</span>
+            </label>
+            <input 
+              type="range" min="0" max="100" step="1" 
+              value={budgetFramework.drainage} 
+              onChange={e => setBudgetFramework(prev => ({ ...prev, drainage: parseFloat(e.target.value) || 0 }))} 
+              style={{width: '100%'}}
+            />
+          </div>
+
+          <div className="form-group" style={{marginBottom: 0}}>
+            <label style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem'}}>
+              <span>งานเขตทางและอื่นๆ</span>
+              <span style={{fontWeight: 'bold', color: 'var(--accent)'}}>{budgetFramework.others}%</span>
+            </label>
+            <input 
+              type="range" min="0" max="100" step="1" 
+              value={budgetFramework.others} 
+              onChange={e => setBudgetFramework(prev => ({ ...prev, others: parseFloat(e.target.value) || 0 }))} 
+              style={{width: '100%'}}
+            />
+          </div>
+
+          <div className="form-group" style={{marginBottom: 0}}>
+            <label style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem'}}>
+              <span>งานสะพาน</span>
+              <span style={{fontWeight: 'bold', color: 'var(--accent)'}}>{budgetFramework.bridge}%</span>
+            </label>
+            <input 
+              type="range" min="0" max="100" step="1" 
+              value={budgetFramework.bridge} 
+              onChange={e => setBudgetFramework(prev => ({ ...prev, bridge: parseFloat(e.target.value) || 0 }))} 
+              style={{width: '100%'}}
+            />
+          </div>
+
+          <div className="form-group" style={{marginBottom: 0}}>
+            <label style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem'}}>
+              <span>งานไหล่ทางและทางเชื่อม</span>
+              <span style={{fontWeight: 'bold', color: 'var(--accent)'}}>{budgetFramework.shoulder}%</span>
+            </label>
+            <input 
+              type="range" min="0" max="100" step="1" 
+              value={budgetFramework.shoulder} 
+              onChange={e => setBudgetFramework(prev => ({ ...prev, shoulder: parseFloat(e.target.value) || 0 }))} 
+              style={{width: '100%'}}
+            />
+          </div>
+
+          {(() => {
+            const sum = budgetFramework.pavement + budgetFramework.traffic + budgetFramework.drainage + budgetFramework.others + budgetFramework.bridge + budgetFramework.shoulder;
+            if (Math.abs(sum - 100) > 0.01) {
+              return (
+                <div style={{color: '#ef4444', fontSize: '0.85rem', marginTop: '4px', fontWeight: 'bold'}}>
+                  ⚠️ สัดส่วนรวมต้องเท่ากับ 100% (ปัจจุบัน: {sum}%)
+                </div>
+              );
+            }
+            return null;
+          })()}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="main-content" style={{flex: 1, minWidth: 0, padding: 0}}>
         <h1><Map style={{display: 'inline', verticalAlign: 'middle', marginRight: '12px', marginBottom: '4px'}}/> ระบบคำนวณงบประมาณ (Workload Cost)</h1>
         <p>แพลตฟอร์มปรับแก้ปริมาณงานและตัวแปรเพื่อจำลองผลกระทบต่องบประมาณแบบ Real-time</p>
         
@@ -230,6 +348,7 @@ function App() {
 
             <Metrics results={results} />
             <DataTable results={results} />
+            <FrameworkTable results={results} />
             <Charts results={results} />
             <WorkloadDetailTable results={results} />
             <SummaryAllDistrictsTable results={results} />
