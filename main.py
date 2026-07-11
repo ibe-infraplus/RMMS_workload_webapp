@@ -303,7 +303,19 @@ def export_workload_excel(req: CalculateRequest):
         comparison["total_budget_diff"] = comparison["revised_total_budget"] - comparison["baseline_total_budget"]
         comparison.to_excel(writer, index=False, sheet_name="Summary_Comparison")
         
-        # Sheet 2: Detailed Workload
+        # Sheet 2: Revised Detail for Selected District
+        sel_row = revised_summary[revised_summary["dept3"].astype(int) == req.selected_dept3]
+        if not sel_row.empty:
+            sel_name = str(sel_row.iloc[0]["district_name"])
+            # Excel sheet name limit is 31 chars
+            sheet_name = f"Detail_{req.selected_dept3}_{sel_name}"[:30]
+        else:
+            sheet_name = f"Detail_{req.selected_dept3}"
+        
+        revised_detail_selected = revised_detail[revised_detail["dept3"].astype(int) == req.selected_dept3].copy()
+        revised_detail_selected.to_excel(writer, index=False, sheet_name=sheet_name)
+
+        # Sheet 3: Detailed Workload (All)
         revised_detail.to_excel(writer, index=False, sheet_name="Revised_Detail_All")
         
         # Sheet 3: Parameters
