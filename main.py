@@ -297,7 +297,7 @@ def export_workload_excel(req: CalculateRequest):
             "total_budget_model": "revised_total_budget"
         })
         
-        comparison = summary_df.merge(rev_sub, on=["dept3", "division_name", "district_name"], how="inner")
+        comparison = summary_df.merge(rev_sub, on="dept3", how="inner")
         # Add difference columns
         comparison["workload_score_diff"] = comparison["revised_workload_score"] - comparison["baseline_workload_score"]
         comparison["total_budget_diff"] = comparison["revised_total_budget"] - comparison["baseline_total_budget"]
