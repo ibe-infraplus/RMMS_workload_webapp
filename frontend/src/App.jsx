@@ -48,27 +48,83 @@ function App() {
     axios.get(`${API_BASE}/init`).then(res => {
       setInitData(res.data);
       setSelectedDept3(res.data.districts[0].dept3);
-      setMaxFactorUplift(res.data.max_factor_uplift);
-      setBudgetMultiplier(res.data.default_budget_multiplier || 100.0);
-      
-      const overrides = {};
-      res.data.param_grid.forEach(row => {
-        if (row.quantity_col) {
-          overrides[row.quantity_col] = {
-            damage_probability: row.damage_probability,
-            unit_cost: row.unit_cost,
-            apply_damage_probability: row.apply_damage_probability
-          };
-        }
-      });
-      setWorkloadOverrides(overrides);
-      setCurrentConfig(res.data.param_grid);
+
+      // Load parameter grid & overrides from localStorage if present
+      const savedGrid = localStorage.getItem('parameter_grid');
+      const savedOverrides = localStorage.getItem('workload_overrides');
+
+      if (savedGrid) {
+        setCurrentConfig(JSON.parse(savedGrid));
+      } else {
+        setCurrentConfig(res.data.param_grid);
+      }
+
+      if (savedOverrides) {
+        setWorkloadOverrides(JSON.parse(savedOverrides));
+      } else {
+        const overrides = {};
+        res.data.param_grid.forEach(row => {
+          if (row.quantity_col) {
+            overrides[row.quantity_col] = {
+              damage_probability: row.damage_probability,
+              unit_cost: row.unit_cost,
+              apply_damage_probability: row.apply_damage_probability
+            };
+          }
+        });
+        setWorkloadOverrides(overrides);
+      }
+
+      // Load other inputs if saved
+      const savedUplift = localStorage.getItem('max_factor_uplift');
+      setMaxFactorUplift(savedUplift ? parseFloat(savedUplift) : res.data.max_factor_uplift);
+
+      const savedUseDP = localStorage.getItem('use_damage_probability');
+      setUseDamageProbability(savedUseDP !== null ? savedUseDP === 'true' : true);
+
+      const savedMultiplier = localStorage.getItem('budget_multiplier');
+      setBudgetMultiplier(savedMultiplier ? parseFloat(savedMultiplier) : (res.data.default_budget_multiplier || 100.0));
+
+      const savedFramework = localStorage.getItem('budget_framework');
+      if (savedFramework) {
+        setBudgetFramework(JSON.parse(savedFramework));
+      }
+
       setLoadingInit(false);
     }).catch(err => {
       console.error(err);
       alert("Failed to connect to backend API. Is FastAPI running on port 8001?");
     });
   }, []);
+
+  // Sync state changes to localStorage
+  useEffect(() => {
+    if (currentConfig && currentConfig.length > 0) {
+      localStorage.setItem('parameter_grid', JSON.stringify(currentConfig));
+    }
+  }, [currentConfig]);
+
+  useEffect(() => {
+    if (workloadOverrides && Object.keys(workloadOverrides).length > 0) {
+      localStorage.setItem('workload_overrides', JSON.stringify(workloadOverrides));
+    }
+  }, [workloadOverrides]);
+
+  useEffect(() => {
+    localStorage.setItem('max_factor_uplift', maxFactorUplift);
+  }, [maxFactorUplift]);
+
+  useEffect(() => {
+    localStorage.setItem('use_damage_probability', useDamageProbability);
+  }, [useDamageProbability]);
+
+  useEffect(() => {
+    localStorage.setItem('budget_multiplier', budgetMultiplier);
+  }, [budgetMultiplier]);
+
+  useEffect(() => {
+    localStorage.setItem('budget_framework', JSON.stringify(budgetFramework));
+  }, [budgetFramework]);
 
   useEffect(() => {
     if (!selectedDept3 || !initData) return;

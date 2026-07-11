@@ -63,6 +63,9 @@ export default function ParameterModal({
     const confirmReset = window.confirm("This will revert all parameters and overrides back to the original system defaults. Proceed?");
     if (!confirmReset) return;
     
+    localStorage.removeItem('parameter_grid');
+    localStorage.removeItem('workload_overrides');
+
     setCurrentConfig(initData.param_grid);
     const overrides = {};
     initData.param_grid.forEach(row => {
