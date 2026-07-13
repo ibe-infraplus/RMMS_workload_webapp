@@ -343,7 +343,7 @@ for category, cfgs in configs_by_category.items():
                     key=f"q_{idx}_{q_col}",
                     help=help_text,
                 )
-                if q_col == "length_to2":
+                if q_col == "length_to2" and "ตัดหญ้า" not in cfg["item"]:
                     warranty_val = float(pd.to_numeric(pd.Series([selected_row.get("warranty_distance", 0)]), errors="coerce").fillna(0).iloc[0])
                     st.text_input(
                         "ระยะติดค้ำประกัน (กม.)", 
