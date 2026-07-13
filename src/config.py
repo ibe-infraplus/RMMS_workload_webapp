@@ -32,12 +32,23 @@ WORKLOAD_CONFIG = [
         "damage_probability": None,
         "unit_cost": None,
         "apply_damage_probability": False,
-        "condition_profile": "pavement",
+        "condition_profile": "pavement_custom",
         "note": (
             "unit cost คำนวณอัตโนมัติจาก "
             "'ค่ามาตรฐานการซ่อมบำรุงถนนอ้างอิง' ในไฟล์ข้อมูลโอกาสเกิดความเสียหาย "
             "แล้ว join unit cost จาก RMMS ปี 2568 โดยไม่คูณ damage probability สำหรับผิวจราจร"
         ),
+    },
+    {
+        "item": "เกาะกลาง",
+        "category": "Asset",
+        "quantity_col": "road_medians_m",
+        "unit": "เมตร",
+        "damage_key": "เกาะกลาง",
+        "unit_cost": 0.0,
+        "apply_damage_probability": True,
+        "condition_profile": "median_custom",
+        "note": "จาก ASSET (road_medians_m)",
     },
     {
         "item": "สะพานลอยคนเดินข้าม",
@@ -46,7 +57,7 @@ WORKLOAD_CONFIG = [
         "unit": "แห่ง",
         "damage_key": "สะพานลอยคนเดิน",
         "unit_cost": 5000,
-        "condition_profile": "bridge",
+        "condition_profile": "none",
         "note": "จาก ASSET",
     },
     {
@@ -56,7 +67,7 @@ WORKLOAD_CONFIG = [
         "unit": "เมตร",
         "damage_key": "สะพานทางยกระดับ",
         "unit_cost": 137.16,
-        "condition_profile": "bridge",
+        "condition_profile": "short_bridge_custom",
         "note": "ใช้คอลัมน์ใหม่ bridge_m (หน่วยเป็นเมตร)",
     },
     {
@@ -66,7 +77,7 @@ WORKLOAD_CONFIG = [
         "unit": "แห่ง/ช่อง",
         "damage_key": "สะพานทางยกระดับ",
         "unit_cost": 500,
-        "condition_profile": "bridge",
+        "condition_profile": "bridge_custom",
         "note": "ถ้าไม่มีข้อมูล pipebridge_v จะเป็น 0",
     },
     {
@@ -86,7 +97,7 @@ WORKLOAD_CONFIG = [
         "unit": "ต้น",
         "damage_key": "ไฟจราจร",
         "unit_cost": 40000,
-        "condition_profile": "traffic_asset",
+        "condition_profile": "traffic_asset_custom",
         "note": "ใช้ probability หน่วยต้น",
     },
     {
@@ -96,7 +107,7 @@ WORKLOAD_CONFIG = [
         "unit": "ชุด",
         "damage_key": "ไฟทางข้าม",
         "unit_cost": 500,
-        "condition_profile": "traffic_asset",
+        "condition_profile": "traffic_asset_custom",
         "note": "จาก ASSET ไฟคนเดินข้าม",
     },
     {
@@ -106,7 +117,7 @@ WORKLOAD_CONFIG = [
         "unit": "ต้น",
         "damage_key": "ไฟแสงสว่างกิ่งเดี่ยวกิ่งคู่",
         "unit_cost": 100,
-        "condition_profile": "traffic_asset",
+        "condition_profile": "traffic_asset_custom",
         "note": "จาก ASSET ไฟฟ้าแสงสว่าง",
     },
     {
@@ -116,7 +127,7 @@ WORKLOAD_CONFIG = [
         "unit": "ต้น",
         "damage_key": "ไฟแสงสว่าง Hi-Mast",
         "unit_cost": 100,
-        "condition_profile": "traffic_asset",
+        "condition_profile": "traffic_asset_custom",
         "note": "ไม่มีคอลัมน์ตรงในไฟล์ ตั้ง default = 0 ให้ user กรอกใน web app",
     },
     {
@@ -126,7 +137,7 @@ WORKLOAD_CONFIG = [
         "unit": "ชุด",
         "damage_key": "ไฟกระพริบ",
         "unit_cost": 500,
-        "condition_profile": "traffic_asset",
+        "condition_profile": "traffic_asset_custom",
         "note": "จาก ASSET",
     },
     {
@@ -136,7 +147,7 @@ WORKLOAD_CONFIG = [
         "unit": "ป้าย",
         "damage_key": "ป้ายจราจร",
         "unit_cost": 0,
-        "condition_profile": "traffic_asset",
+        "condition_profile": "traffic_asset_custom",
         "note": "unit cost ไม่มีในไฟล์ราคาต้นทุน กรุณาเติมใน CONFIG",
     },
     {
@@ -146,7 +157,7 @@ WORKLOAD_CONFIG = [
         "unit": "แห่ง",
         "damage_key": "ท่อระบายน้ำ",
         "unit_cost": 350,
-        "condition_profile": "drainage",
+        "condition_profile": "drainage_pipe_custom",
         "note": "รวมท่อลอดทางและท่อข้างทาง",
     },
     {
@@ -156,15 +167,29 @@ WORKLOAD_CONFIG = [
         "unit": "เมตร",
         "damage_key": "ท่อระบายน้ำ",
         "unit_cost": 0,
-        "condition_profile": "drainage",
+        "condition_profile": "drainage_ditch_custom",
         "note": "มี quantity แต่ยังไม่มี unit cost",
+    },
+    {
+        "item": "งานตัดหญ้าและบำรุงรักษาเขตทาง",
+        "category": "Asset",
+        "quantity_col": "length_to2",
+        "unit": "กม.",
+        "damage_key": None,
+        "unit_cost": None,
+        "apply_damage_probability": False,
+        "condition_profile": "none",
+        "note": "ดึงราคากลางเริ่มต้นตาม Cluster ของแขวง",
     },
 ]
 
 FACTOR_PROFILES = {
     "none": {},
-    "pavement": {"traffic_score": 0.30, "truck_score": 0.25, "elevation_score": 0.15, "rain_score": 0.20, "operating_distance_score": 0.10},
-    "bridge": {"traffic_score": 0.25, "truck_score": 0.30, "elevation_score": 0.25, "rain_score": 0.10, "operating_distance_score": 0.10},
-    "drainage": {"traffic_score": 0.15, "truck_score": 0.00, "elevation_score": 0.20, "rain_score": 0.55, "operating_distance_score": 0.10},
-    "traffic_asset": {"traffic_score": 0.50, "truck_score": 0.20, "elevation_score": 0.00, "rain_score": 0.20, "operating_distance_score": 0.10},
+    "pavement_custom": {"traffic_score": 0.25, "truck_score": 0.25, "rain_score": 0.25, "operating_distance_score": 0.25},
+    "median_custom": {"traffic_score": 0.333, "truck_score": 0.333, "rain_score": 0.334},
+    "drainage_pipe_custom": {"rain_score": 0.50, "elevation_score": 0.50},
+    "drainage_ditch_custom": {"traffic_score": 0.333, "truck_score": 0.333, "rain_score": 0.334},
+    "bridge_custom": {"traffic_score": 0.50, "truck_score": 0.50},
+    "short_bridge_custom": {"traffic_score": 0.333, "truck_score": 0.333, "rain_score": 0.334},
+    "traffic_asset_custom": {"traffic_score": 1.0},
 }

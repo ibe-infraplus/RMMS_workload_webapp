@@ -544,8 +544,6 @@ st.write("###### Breakdown งบประมาณส่วนต่างๆ")
 breakdown = pd.DataFrame([
     {"component": "Base Workload", "baseline": base_one["base_workload_cost"], "revised": revised_one["base_workload_cost"]},
     {"component": "Factor", "baseline": base_one["factor_cost"], "revised": revised_one["factor_cost"]},
-    {"component": "Fixed Cost: ค่าเช่าเครื่องจักร", "baseline": base_one["machine_rental_cost"], "revised": revised_one["machine_rental_cost"]},
-    {"component": "Fixed Cost: งานตัดหญ้า", "baseline": base_one["grass_cost_estimate"], "revised": revised_one["grass_cost_estimate"]},
     {"component": "Total Budget", "baseline": base_one["total_budget_model"], "revised": revised_one["total_budget_model"]},
 ])
 breakdown["change"] = breakdown["revised"] - breakdown["baseline"]
@@ -568,6 +566,7 @@ fw_thai_names_local = {
 
 category_mapping_local = {
     "ผิวจราจร/ระยะทางต่อ 2 ช่องจราจร": "pavement",
+    "เกาะกลาง": "others",
     "สะพานลอยคนเดินข้าม": "bridge",
     "สะพานข้ามคลอง < 20 ม.": "bridge",
     "ท่อลอด": "bridge",
@@ -579,17 +578,16 @@ category_mapping_local = {
     "ไฟกระพริบ": "traffic",
     "ป้ายจราจร": "traffic",
     "ท่อระบายน้ำ": "drainage",
-    "ทางระบายน้ำ": "drainage"
+    "ทางระบายน้ำ": "drainage",
+    "งานตัดหญ้าและบำรุงรักษาเขตทาง": "others"
 }
 
 def get_actual_breakdown_local(summary_row, detail_rows_df):
-    grass_cost = float(summary_row.get("grass_cost_estimate", 0.0))
-    machine_rental = float(summary_row.get("machine_rental_cost", 0.0))
     actuals = {
         "pavement": 0.0,
         "traffic": 0.0,
         "drainage": 0.0,
-        "others": grass_cost + machine_rental,
+        "others": 0.0,
         "bridge": 0.0,
         "shoulder": 0.0
     }
@@ -863,6 +861,7 @@ def generate_excel_download_stream(base_summary, revised_summary, base_detail, r
 
     category_mapping = {
         "ผิวจราจร/ระยะทางต่อ 2 ช่องจราจร": "pavement",
+        "เกาะกลาง": "others",
         "สะพานลอยคนเดินข้าม": "bridge",
         "สะพานข้ามคลอง < 20 ม.": "bridge",
         "ท่อลอด": "bridge",
@@ -874,17 +873,16 @@ def generate_excel_download_stream(base_summary, revised_summary, base_detail, r
         "ไฟกระพริบ": "traffic",
         "ป้ายจราจร": "traffic",
         "ท่อระบายน้ำ": "drainage",
-        "ทางระบายน้ำ": "drainage"
+        "ทางระบายน้ำ": "drainage",
+        "งานตัดหญ้าและบำรุงรักษาเขตทาง": "others"
     }
 
     def get_actual_breakdown(summary_row, detail_rows_df):
-        grass_cost = float(summary_row.get("grass_cost_estimate", 0.0))
-        machine_rental = float(summary_row.get("machine_rental_cost", 0.0))
         actuals = {
             "pavement": 0.0,
             "traffic": 0.0,
             "drainage": 0.0,
-            "others": grass_cost + machine_rental,
+            "others": 0.0,
             "bridge": 0.0,
             "shoulder": 0.0
         }

@@ -45,7 +45,6 @@ def get_damage_probability(cfg, lookup):
     return 1.0 if pd.isna(val) else float(val)
 
 
-
 def get_dynamic_unit_cost_and_probability(cfg, lookup, data_dir=None):
     """
     คืนค่า damage_probability และ unit_cost ตามประเภท workload
@@ -53,16 +52,15 @@ def get_dynamic_unit_cost_and_probability(cfg, lookup, data_dir=None):
     เฉพาะ 'ผิวจราจร/ระยะทางต่อ 2 ช่องจราจร':
     - damage_probability คำนวณจาก section 'ค่ามาตรฐานการซ่อมบำรุงถนนอ้างอิง'
     - unit_cost คำนวณจาก RMMS ปี 2568 ตาม workcode
-
-    รายการอื่นยังใช้ logic เดิมจาก WORKLOAD_CONFIG และ load_damage()
     """
     item = cfg.get("item", "")
     q_col = cfg.get("quantity_col", "")
 
     is_pavement_length = (
-        "ระยะทางต่อ 2 ช่องจราจร" in item
+        ("ระยะทางต่อ 2 ช่องจราจร" in item
         or "ระยะทาง 2 ช่องจราจร" in item
-        or q_col == "length_to2"
+        or q_col == "length_to2")
+        and "ตัดหญ้า" not in item
     )
 
     if is_pavement_length:
@@ -72,9 +70,14 @@ def get_dynamic_unit_cost_and_probability(cfg, lookup, data_dir=None):
             pavement_cost["pavement_unit_cost"],
         )
 
+    if "ตัดหญ้า" in item:
+        # สโลปเริ่มต้นระดับประเทศตัวแทน
+        return 1.0, 10742.3944
+
     p = get_damage_probability(cfg, lookup)
     unit_cost = float(cfg.get("unit_cost", 0) or 0)
     return p, unit_cost
+
 
 def compute_workload(
     master,
@@ -93,7 +96,6 @@ def compute_workload(
     if isinstance(workload_overrides, dict):
         override_map = workload_overrides
 
-    # Use custom_config if provided, else fallback to WORKLOAD_CONFIG
     config_to_use = custom_config if custom_config is not None else WORKLOAD_CONFIG
 
     # Calculate dynamic unit costs and find the minimum non-zero unit cost
@@ -106,7 +108,7 @@ def compute_workload(
             unit_cost = float(ov["unit_cost"])
         resolved_costs.append(unit_cost)
     
-    non_zero_costs = [c for c in resolved_costs if c > 0]
+    non_zero_costs = [c for c in resolved_costs if isinstance(c, (int, float)) and c > 0]
     min_unit_cost = min(non_zero_costs) if non_zero_costs else 1.0
 
     if budget_multiplier is None:
@@ -114,6 +116,7 @@ def compute_workload(
 
     for cfg in config_to_use:
         q_col = cfg.get("quantity_col", "")
+        item = cfg.get("item", "")
         q = pd.to_numeric(master[q_col], errors="coerce").fillna(0) if q_col and q_col in master.columns else pd.Series(0, index=master.index)
         p, unit_cost = get_dynamic_unit_cost_and_probability(cfg, lookup, data_dir=data_dir)
         ov = override_map.get(q_col, {}) if isinstance(override_map, dict) else {}
@@ -126,8 +129,15 @@ def compute_workload(
         else:
             apply_cfg = cfg.get("apply_damage_probability", True)
 
+        # Dynamic Unit Cost for Grass Cutting
+        if "งานตัดหญ้า" in item and (not isinstance(ov, dict) or "unit_cost" not in ov or ov["unit_cost"] is None):
+            unit_cost = master["Cluster"].map(lambda c: CLUSTER_GRASS_FORMULA.get(int(c), {}).get("slope", 0.0)).fillna(0.0)
+
         # 1. Base Value
-        base_value = float(unit_cost / min_unit_cost) if unit_cost > 0 else 0.0
+        if isinstance(unit_cost, pd.Series):
+            base_value = unit_cost / min_unit_cost
+        else:
+            base_value = float(unit_cost / min_unit_cost) if unit_cost > 0 else 0.0
 
         # 2. Workload Unit
         workload_unit = q * base_value
@@ -180,19 +190,10 @@ def compute_workload(
 
 
 def compute_fixed_cost(master):
-    out = master[["dept3", "district_name", "length_to2", "Cluster", "machine_rental_cost"]].copy()
-
-    def grass(row):
-        try:
-            coeff = CLUSTER_GRASS_FORMULA.get(int(row["Cluster"]))
-        except Exception:
-            coeff = None
-        if not coeff:
-            return 0.0
-        return coeff["slope"] * row["length_to2"] + coeff["intercept"]
-
-    out["grass_cost_estimate"] = out.apply(grass, axis=1)
-    out["fixed_cost"] = out["machine_rental_cost"].fillna(0) + out["grass_cost_estimate"].fillna(0)
+    out = master[["dept3", "district_name"]].copy()
+    out["machine_rental_cost"] = 0.0
+    out["grass_cost_estimate"] = 0.0
+    out["fixed_cost"] = 0.0
     return out
 
 

@@ -106,6 +106,7 @@ FRAMEWORK_THAI_NAMES = {
 
 CATEGORY_MAPPING = {
     "ผิวจราจร/ระยะทางต่อ 2 ช่องจราจร": "pavement",
+    "เกาะกลาง": "others",
     "สะพานลอยคนเดินข้าม": "bridge",
     "สะพานข้ามคลอง < 20 ม.": "bridge",
     "ท่อลอด": "bridge",
@@ -117,18 +118,16 @@ CATEGORY_MAPPING = {
     "ไฟกระพริบ": "traffic",
     "ป้ายจราจร": "traffic",
     "ท่อระบายน้ำ": "drainage",
-    "ทางระบายน้ำ": "drainage"
+    "ทางระบายน้ำ": "drainage",
+    "งานตัดหญ้าและบำรุงรักษาเขตทาง": "others"
 }
 
 def get_actual_category_breakdown(summary_row, detail_rows_df):
-    grass_cost = float(summary_row.get("grass_cost_estimate", 0.0))
-    machine_rental = float(summary_row.get("machine_rental_cost", 0.0))
-    
     actuals = {
         "pavement": 0.0,
         "traffic": 0.0,
         "drainage": 0.0,
-        "others": grass_cost + machine_rental,
+        "others": 0.0,
         "bridge": 0.0,
         "shoulder": 0.0
     }
@@ -321,8 +320,6 @@ def calculate_workload(req: CalculateRequest):
         "breakdown": [
             {"component": "Base Workload", "baseline": float(base_one["base_workload_cost"]), "revised": float(revised_one["base_workload_cost"])},
             {"component": "Factor", "baseline": float(base_one["factor_cost"]), "revised": float(revised_one["factor_cost"])},
-            {"component": "Fixed Cost: ค่าเช่าเครื่องจักร", "baseline": float(base_one["machine_rental_cost"]), "revised": float(revised_one["machine_rental_cost"])},
-            {"component": "Fixed Cost: งานตัดหญ้า", "baseline": float(base_one["grass_cost_estimate"]), "revised": float(revised_one["grass_cost_estimate"])},
             {"component": "Total Budget", "baseline": float(base_one["total_budget_model"]), "revised": float(revised_one["total_budget_model"])},
         ],
         "workload_detail": revised_detail_one.to_dict(orient="records"),
@@ -528,8 +525,6 @@ def calculate_single_district(dept3: int, req: SingleCalculateRequest):
         "breakdown": [
             {"component": "Base Workload", "cost": float(revised_one["base_workload_cost"])},
             {"component": "Factor", "cost": float(revised_one["factor_cost"])},
-            {"component": "Fixed Cost: ค่าเช่าเครื่องจักร", "cost": float(revised_one["machine_rental_cost"])},
-            {"component": "Fixed Cost: งานตัดหญ้า", "cost": float(revised_one["grass_cost_estimate"])},
         ],
         "workload_detail": revised_detail_one.to_dict(orient="records")
     }

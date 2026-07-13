@@ -15,7 +15,6 @@ export default function SummaryAllDistrictsTable({ results }) {
               <th>แขวง</th>
               <th style={{ textAlign: 'right' }}>Base Workload Cost</th>
               <th style={{ textAlign: 'right' }}>Factor Cost</th>
-              <th style={{ textAlign: 'right' }}>Fixed Cost</th>
               <th style={{ textAlign: 'right' }}>Total Budget</th>
             </tr>
           </thead>
@@ -27,7 +26,6 @@ export default function SummaryAllDistrictsTable({ results }) {
                 <td style={{ fontWeight: 500 }}>{row.district_name}</td>
                 <td style={{ textAlign: 'right' }}>{Number(row.base_workload_cost).toLocaleString()}</td>
                 <td style={{ textAlign: 'right' }}>{Number(row.factor_cost).toLocaleString()}</td>
-                <td style={{ textAlign: 'right' }}>{Number(row.fixed_cost).toLocaleString()}</td>
                 <td style={{ textAlign: 'right', fontWeight: 'bold', color: 'var(--accent)' }}>{Number(row.total_budget_model).toLocaleString()}</td>
               </tr>
             ))}
