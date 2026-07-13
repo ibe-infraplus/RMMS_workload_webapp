@@ -231,7 +231,7 @@ def get_warranty_distances(data_dir=None):
         url = f"https://plannet.doh.go.th/PN2021API/PlanData/getTPMSActionPlan/{year}"
         data = None
         try:
-            res = requests.get(url, headers=headers, timeout=10)
+            res = requests.get(url, headers=headers, timeout=2)
             res.raise_for_status()
             data = res.json()
         except Exception as e:
