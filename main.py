@@ -119,7 +119,13 @@ CATEGORY_MAPPING = {
     "ป้ายจราจร": "traffic",
     "ท่อระบายน้ำ": "drainage",
     "ทางระบายน้ำ": "drainage",
-    "งานตัดหญ้าและบำรุงรักษาเขตทาง": "others"
+    "งานตัดหญ้าและบำรุงรักษาเขตทาง": "others",
+    "งานตีเส้นจราจร": "others",
+    "อุโมงค์/ทางลอด": "others",
+    "ทางเท้า": "others",
+    "ทางจักรยาน": "others",
+    "ราวกันอันตราย": "others",
+    "หลักนำทาง/หลัก กม.": "others"
 }
 
 def get_actual_category_breakdown(summary_row, detail_rows_df):

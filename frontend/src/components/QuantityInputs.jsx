@@ -53,9 +53,9 @@ export default function QuantityInputs({
                     value={currentVal} 
                     onChange={e => handleQuantityChange(col, e.target.value)} 
                   />
-                  {cfg.workload_item.includes("ตัดหญ้า") && clusterVal !== null && rate !== null && (
+                  {cfg.workload_item.includes("ตัดหญ้า") && clusterVal !== null && (
                     <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '4px' }}>
-                      ℹ️ แขวงนี้เป็น Cluster {clusterVal} (ราคากลางเริ่มต้น: {rate.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท/กม.)
+                      ℹ️ แขวงนี้เป็น Cluster {clusterVal} (ราคากลางเริ่มต้น: 0.40 บาท/ตร.ม.)
                     </div>
                   )}
                 </div>
