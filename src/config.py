@@ -260,11 +260,11 @@ WORKLOAD_CONFIG = [
 
 FACTOR_PROFILES = {
     "none": {},
-    "pavement_custom": {"traffic_score": 0.25, "truck_score": 0.25, "rain_score": 0.25, "operating_distance_score": 0.25},
-    "median_custom": {"traffic_score": 0.333, "truck_score": 0.333, "rain_score": 0.334},
-    "drainage_pipe_custom": {"rain_score": 0.50, "elevation_score": 0.50},
-    "drainage_ditch_custom": {"traffic_score": 0.333, "truck_score": 0.333, "rain_score": 0.334},
-    "bridge_custom": {"traffic_score": 0.50, "truck_score": 0.50},
-    "short_bridge_custom": {"traffic_score": 0.333, "truck_score": 0.333, "rain_score": 0.334},
+    "pavement_custom": {"traffic_score": 1.0, "truck_score": 1.0, "rain_score": 1.0, "operating_distance_score": 1.0},
+    "median_custom": {"traffic_score": 1.0, "rain_score": 1.0},
+    "drainage_pipe_custom": {"rain_score": 1.0, "elevation_score": 1.0},
+    "drainage_ditch_custom": {"traffic_score": 1.0, "rain_score": 1.0},
+    "bridge_custom": {"traffic_score": 1.0, "truck_score": 1.0},
+    "short_bridge_custom": {"traffic_score": 1.0, "truck_score": 1.0, "rain_score": 1.0},
     "traffic_asset_custom": {"traffic_score": 1.0},
 }

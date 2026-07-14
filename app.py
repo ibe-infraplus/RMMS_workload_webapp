@@ -291,7 +291,7 @@ Total Budget:
 # =========================================================
 
 try:
-    master = load_all(data_dir, cache_buster=6)
+    master = load_all(data_dir, cache_buster=7)
 except Exception as e:
     st.error(str(e))
     st.stop()

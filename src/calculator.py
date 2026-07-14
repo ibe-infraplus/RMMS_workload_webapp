@@ -141,7 +141,10 @@ def compute_workload(
         profile = cfg.get("condition_profile", "none")
         weights = FACTOR_PROFILES.get(profile, {})
         if weights:
-            factor_index = sum(master[k] * w for k, w in weights.items() if k in master.columns)
+            # Sum the factors (each has weight 1.00)
+            raw_factor_index = sum(master[k] * w for k, w in weights.items() if k in master.columns)
+            # Cap the factor index at 1.00
+            factor_index = raw_factor_index.clip(upper=1.0)
         else:
             factor_index = pd.Series(0.0, index=master.index)
 
