@@ -113,8 +113,14 @@ def compute_workload(
             apply_cfg = cfg.get("apply_damage_probability", True)
 
         # Dynamic Unit Cost for Grass Cutting
-        if "งานตัดหญ้า" in item and (not isinstance(ov, dict) or "unit_cost" not in ov or ov["unit_cost"] is None):
-            unit_cost = master["Cluster"].map(lambda c: CLUSTER_GRASS_FORMULA.get(int(c), {}).get("slope", 0.0)).fillna(0.0)
+        if "งานตัดหญ้า" in item:
+            is_overridden = False
+            if isinstance(ov, dict) and "unit_cost" in ov and ov["unit_cost"] is not None:
+                if abs(float(ov["unit_cost"]) - 10742.3944) > 1e-4:
+                    is_overridden = True
+                    unit_cost = float(ov["unit_cost"])
+            if not is_overridden:
+                unit_cost = master["Cluster"].map(lambda c: CLUSTER_GRASS_FORMULA.get(int(c), {}).get("slope", 0.0)).fillna(0.0)
 
         # 1. Base Value
         if isinstance(unit_cost, pd.Series):
