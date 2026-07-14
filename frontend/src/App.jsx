@@ -357,6 +357,8 @@ function App() {
           results={results}
           quantityUpdates={quantityUpdates}
           setQuantityUpdates={setQuantityUpdates}
+          selectedDept3={selectedDept3}
+          initData={initData}
         />
 
         {results && (

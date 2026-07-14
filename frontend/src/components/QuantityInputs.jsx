@@ -5,11 +5,18 @@ export default function QuantityInputs({
   configsByCategory,
   results,
   quantityUpdates,
-  setQuantityUpdates
+  setQuantityUpdates,
+  selectedDept3,
+  initData
 }) {
   const handleQuantityChange = (col, val) => {
     setQuantityUpdates(prev => ({ ...prev, [col]: parseFloat(val) || 0 }));
   };
+
+  const selectedDistrictObj = initData?.districts?.find(d => d.dept3 == selectedDept3);
+  const clusterVal = selectedDistrictObj ? selectedDistrictObj.Cluster : null;
+  const grassRates = { 0: 7623.59, 1: 10742.39, 2: 28697.51 };
+  const rate = clusterVal !== null ? grassRates[clusterVal] : null;
 
   return (
     <>
@@ -46,6 +53,11 @@ export default function QuantityInputs({
                     value={currentVal} 
                     onChange={e => handleQuantityChange(col, e.target.value)} 
                   />
+                  {cfg.workload_item.includes("ตัดหญ้า") && clusterVal !== null && rate !== null && (
+                    <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '4px' }}>
+                      ℹ️ แขวงนี้เป็น Cluster {clusterVal} (ราคากลางเริ่มต้น: {rate.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท/กม.)
+                    </div>
+                  )}
                 </div>
               );
             })}

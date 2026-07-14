@@ -58,7 +58,7 @@ def get_initial_data():
     master_view["district_label"] = master_view["dept3"].astype(str) + " - " + master_view["district_name"].astype(str)
     master_view = master_view.sort_values(["division_name", "district_name"])
     
-    districts = master_view[["dept3", "district_label", "division_name", "district_name"]].to_dict(orient="records")
+    districts = master_view[["dept3", "district_label", "division_name", "district_name", "Cluster"]].to_dict(orient="records")
     
     # Get parameter grid
     lookup = damage_lookup("data")
