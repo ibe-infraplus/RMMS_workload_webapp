@@ -310,6 +310,61 @@ def calculate_workload(req: CalculateRequest):
             "revised_diff": act_rev - target_budget_rev
         })
 
+    # Check if anything has been modified by the user compared to baseline defaults
+    any_quantity_changed = False
+    selected_row = master.loc[master["dept3"].astype(int).eq(req.selected_dept3)].iloc[0]
+    for q_col, val in req.quantity_updates.items():
+        orig_val = float(pd.to_numeric(pd.Series([selected_row.get(q_col, 0)]), errors="coerce").fillna(0).iloc[0])
+        if abs(val - orig_val) > 1e-5:
+            any_quantity_changed = True
+            break
+
+    any_param_changed = False
+    for q_col, override in req.workload_overrides.items():
+        default_cfg = next((c for c in WORKLOAD_CONFIG if c.get("quantity_col") == q_col), None)
+        if default_cfg:
+            default_p, default_uc = get_dynamic_unit_cost_and_probability(default_cfg, damage_lookup("data"), "data")
+            override_p = override.get("damage_probability")
+            override_uc = override.get("unit_cost")
+            override_apply = override.get("apply_damage_probability")
+            if override_p is not None and abs(override_p - default_p) > 1e-5:
+                any_param_changed = True
+            if override_uc is not None and abs(override_uc - default_uc) > 1e-5:
+                any_param_changed = True
+            if override_apply is not None and override_apply != default_cfg.get("apply_damage_probability", True):
+                any_param_changed = True
+
+    # Find min non-zero unit cost for budget multiplier baseline
+    non_zero_costs = []
+    for cfg in WORKLOAD_CONFIG:
+        p, unit_cost = get_dynamic_unit_cost_and_probability(cfg, damage_lookup("data"), "data")
+        if unit_cost > 0:
+            non_zero_costs.append(unit_cost)
+    default_uc_min = min(non_zero_costs) if non_zero_costs else 1.0
+
+    any_multiplier_changed = False
+    if req.budget_multiplier is not None and abs(req.budget_multiplier - default_uc_min) > 1e-5:
+        any_multiplier_changed = True
+
+    any_uplift_changed = abs(req.max_factor_uplift - 0.15) > 1e-5
+    any_damage_prob_toggle_changed = (req.use_damage_probability != True)
+
+    any_framework_changed = False
+    if req.budget_framework:
+        framework_defaults = {"pavement": 50.0, "traffic": 15.0, "drainage": 15.0, "others": 10.0, "bridge": 5.0, "shoulder": 5.0}
+        for k, v in framework_defaults.items():
+            if abs(req.budget_framework.get(k, v) - v) > 0.01:
+                any_framework_changed = True
+
+    has_changes = (
+        any_quantity_changed
+        or any_param_changed
+        or any_multiplier_changed
+        or any_uplift_changed
+        or any_damage_prob_toggle_changed
+        or any_framework_changed
+    )
+
     # Prepare response
     res = {
         "framework_comparison": framework_table,
@@ -331,6 +386,7 @@ def calculate_workload(req: CalculateRequest):
         "workload_detail": revised_detail_one.to_dict(orient="records"),
         "debug": debug_data,
         "default_quantities": default_quantities,
+        "has_changes": has_changes,
         "chart_data": {
             "all_districts_baseline": base_summary[["dept3", "district_name", "total_budget_model", "workload_score", "pavement_workload"]].to_dict(orient="records"),
             "all_districts_revised": revised_summary[["dept3", "district_name", "total_budget_model", "division_name", "workload_score", "pavement_workload"]].to_dict(orient="records")

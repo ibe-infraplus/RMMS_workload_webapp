@@ -377,6 +377,25 @@ for category, cfgs in configs_by_category.items():
 
 quantity_change_df = pd.DataFrame(quantity_records)
 
+# Check if anything has been modified by the user compared to baseline defaults
+any_quantity_changed = any(abs(r["revised_quantity"] - r["default_quantity"]) > 1e-5 for r in quantity_records)
+any_param_changed = not param_df.equals(editable_param_df)
+any_multiplier_changed = abs(budget_multiplier - default_x) > 1e-5
+any_uplift_changed = abs(max_factor_uplift - 0.15) > 1e-5
+any_damage_prob_toggle_changed = (use_damage_probability != True)
+
+framework_defaults = {"pavement": 50.0, "traffic": 15.0, "drainage": 15.0, "others": 10.0, "bridge": 5.0, "shoulder": 5.0}
+any_framework_changed = any(abs(pct_config[k] - framework_defaults[k]) > 0.01 for k in framework_defaults)
+
+has_changes = (
+    any_quantity_changed
+    or any_param_changed
+    or any_multiplier_changed
+    or any_uplift_changed
+    or any_damage_prob_toggle_changed
+    or any_framework_changed
+)
+
 
 # =========================================================
 # Recalculate after input
@@ -446,14 +465,18 @@ line_w_all = line_w_base.merge(line_w_revised, on=["dept3", "district_name"], ho
 line_w_all["district_label"] = line_w_all["dept3"].astype(str) + " - " + line_w_all["district_name"].astype(str)
 line_w_all = line_w_all.sort_values("revised_workload", ascending=False)
 
-line_w_plot = pd.concat(
-    [
-        line_w_all[["district_label", "baseline_workload"]].rename(columns={"baseline_workload": "workload"}).assign(scenario="Baseline"),
-        line_w_all[["district_label", "revised_workload"]].rename(columns={"revised_workload": "workload"}).assign(scenario="Revised"),
-        line_w_all[["district_label", "pavement_workload_revised"]].rename(columns={"pavement_workload_revised": "workload"}).assign(scenario="ผิวจราจร (Revised)"),
-    ],
-    ignore_index=True,
-)
+if has_changes:
+    line_w_plot = pd.concat(
+        [
+            line_w_all[["district_label", "baseline_workload"]].rename(columns={"baseline_workload": "workload"}).assign(scenario="Baseline"),
+            line_w_all[["district_label", "revised_workload"]].rename(columns={"revised_workload": "workload"}).assign(scenario="Revised"),
+            line_w_all[["district_label", "pavement_workload_revised"]].rename(columns={"pavement_workload_revised": "workload"}).assign(scenario="ผิวจราจร (Revised)"),
+        ],
+        ignore_index=True,
+    )
+else:
+    line_w_plot = line_w_all[["district_label", "baseline_workload"]].rename(columns={"baseline_workload": "workload"}).assign(scenario="Baseline")
+
 fig_w_line = px.line(
     line_w_plot,
     x="district_label",
@@ -465,7 +488,7 @@ fig_w_line = px.line(
         "ผิวจราจร (Revised)": "#f97316"
     },
     markers=True,
-    title="เปรียบเทียบคะแนน Workload ทุกแขวง เรียงลำดับจากมากไปน้อย (Baseline vs Revised)",
+    title="เปรียบเทียบคะแนน Workload ทุกแขวง เรียงลำดับจากมากไปน้อย (Baseline vs Revised)" if has_changes else "คะแนน Workload ทุกแขวง เรียงลำดับจากมากไปน้อย (Baseline)",
 )
 fig_w_line.update_layout(
     xaxis_title="District Name (แขวง)",
@@ -479,8 +502,6 @@ fig_w_line.update_layout(
 sel_row = line_w_all[line_w_all["dept3"].astype(int) == int(selected_dept3)]
 if not sel_row.empty:
     sel_base_val = float(sel_row.iloc[0]["baseline_workload"])
-    sel_rev_val = float(sel_row.iloc[0]["revised_workload"])
-    sel_pave_val = float(sel_row.iloc[0]["pavement_workload_revised"])
     
     fig_w_line.add_scatter(
         x=[selected_label],
@@ -492,26 +513,30 @@ if not sel_row.empty:
         name="Selected (Baseline)",
         showlegend=False
     )
-    fig_w_line.add_scatter(
-        x=[selected_label],
-        y=[sel_rev_val],
-        mode="markers+text",
-        marker=dict(color="#b91c1c", size=14, symbol="circle", line=dict(color="white", width=2)),
-        text=[f"Revised: {sel_rev_val:,.2f}"],
-        textposition="bottom center",
-        name="Selected (Revised)",
-        showlegend=False
-    )
-    fig_w_line.add_scatter(
-        x=[selected_label],
-        y=[sel_pave_val],
-        mode="markers+text",
-        marker=dict(color="#ea580c", size=14, symbol="circle", line=dict(color="white", width=2)),
-        text=[f"ผิวจราจร: {sel_pave_val:,.2f}"],
-        textposition="bottom center",
-        name="Selected (ผิวจราจร)",
-        showlegend=False
-    )
+    if has_changes:
+        sel_rev_val = float(sel_row.iloc[0]["revised_workload"])
+        sel_pave_val = float(sel_row.iloc[0]["pavement_workload_revised"])
+        
+        fig_w_line.add_scatter(
+            x=[selected_label],
+            y=[sel_rev_val],
+            mode="markers+text",
+            marker=dict(color="#b91c1c", size=14, symbol="circle", line=dict(color="white", width=2)),
+            text=[f"Revised: {sel_rev_val:,.2f}"],
+            textposition="bottom center",
+            name="Selected (Revised)",
+            showlegend=False
+        )
+        fig_w_line.add_scatter(
+            x=[selected_label],
+            y=[sel_pave_val],
+            mode="markers+text",
+            marker=dict(color="#ea580c", size=14, symbol="circle", line=dict(color="white", width=2)),
+            text=[f"ผิวจราจร: {sel_pave_val:,.2f}"],
+            textposition="bottom center",
+            name="Selected (ผิวจราจร)",
+            showlegend=False
+        )
 
 st.plotly_chart(fig_w_line, use_container_width=True)
 
@@ -660,20 +685,24 @@ line_all = line_base.merge(line_revised, on=["dept3", "district_name"], how="inn
 line_all["district_label"] = line_all["dept3"].astype(str) + " - " + line_all["district_name"].astype(str)
 line_all = line_all.sort_values("revised_budget", ascending=False)
 
-line_plot = pd.concat(
-    [
-        line_all[["district_label", "baseline_budget"]].rename(columns={"baseline_budget": "budget"}).assign(scenario="Baseline"),
-        line_all[["district_label", "revised_budget"]].rename(columns={"revised_budget": "budget"}).assign(scenario="Revised"),
-    ],
-    ignore_index=True,
-)
+if has_changes:
+    line_plot = pd.concat(
+        [
+            line_all[["district_label", "baseline_budget"]].rename(columns={"baseline_budget": "budget"}).assign(scenario="Baseline"),
+            line_all[["district_label", "revised_budget"]].rename(columns={"revised_budget": "budget"}).assign(scenario="Revised"),
+        ],
+        ignore_index=True,
+    )
+else:
+    line_plot = line_all[["district_label", "baseline_budget"]].rename(columns={"baseline_budget": "budget"}).assign(scenario="Baseline")
+
 fig_line = px.line(
     line_plot,
     x="district_label",
     y="budget",
     color="scenario",
     markers=True,
-    title="เปรียบเทียบงบประมาณทุกแขวง (Baseline vs Revised)",
+    title="เปรียบเทียบงบประมาณทุกแขวง (Baseline vs Revised)" if has_changes else "งบประมาณทุกแขวง (Baseline)",
 )
 fig_line.update_layout(
     xaxis_title="District Name (แขวง)",

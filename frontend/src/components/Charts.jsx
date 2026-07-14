@@ -16,20 +16,59 @@ export default function Charts({ results }) {
   const baseSorted = sortedData.map(item => item.base.total_budget_model);
   const revSorted = sortedData.map(item => item.rev.total_budget_model);
 
+  const hasChanges = results.has_changes;
+
+  const barData = [
+    {
+      x: ['Baseline'],
+      y: [results.metrics.baseline_total],
+      type: 'bar',
+      text: [results.metrics.baseline_total].map(formatBaht),
+      textposition: 'outside',
+      marker: { color: '#94a3b8' }
+    }
+  ];
+  if (hasChanges) {
+    barData.push({
+      x: ['Revised'],
+      y: [results.metrics.revised_total],
+      type: 'bar',
+      text: [results.metrics.revised_total].map(formatBaht),
+      textposition: 'outside',
+      marker: { color: '#3b82f6' }
+    });
+  }
+
+  const lineData = [
+    {
+      x: xSorted,
+      y: baseSorted,
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Baseline',
+      line: { color: '#94a3b8', width: 2, dash: 'dot' }
+    }
+  ];
+  if (hasChanges) {
+    lineData.push({
+      x: xSorted,
+      y: revSorted,
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Revised',
+      line: { color: '#38bdf8', width: 3, shape: 'spline' },
+      fill: 'tozeroy',
+      fillcolor: 'rgba(56, 189, 248, 0.15)'
+    });
+  }
+
   return (
     <>
       <div className="chart-container">
         <Plot
-          data={[{
-            x: ['Baseline', 'Revised'],
-            y: [results.metrics.baseline_total, results.metrics.revised_total],
-            type: 'bar',
-            text: [results.metrics.baseline_total, results.metrics.revised_total].map(formatBaht),
-            textposition: 'outside',
-            marker: { color: ['#94a3b8', '#3b82f6'] }
-          }]}
+          data={barData}
           layout={{
-            title: 'เปรียบเทียบงบประมาณของแขวงที่เลือก',
+            title: hasChanges ? 'เปรียบเทียบงบประมาณของแขวงที่เลือก' : 'งบประมาณของแขวงที่เลือก (Baseline)',
             paper_bgcolor: 'rgba(0,0,0,0)',
             plot_bgcolor: 'rgba(0,0,0,0)',
             font: { color: '#f8fafc' },
@@ -46,29 +85,10 @@ export default function Charts({ results }) {
         />
       </div>
 
-      <h2>กราฟเส้นงบประมาณรวมทุกแขวง</h2>
+      <h2>{hasChanges ? 'เปรียบเทียบงบประมาณรวมทุกแขวง' : 'งบประมาณรวมทุกแขวง (Baseline)'}</h2>
       <div className="chart-container">
         <Plot
-          data={[
-            {
-              x: xSorted,
-              y: baseSorted,
-              type: 'scatter',
-              mode: 'lines',
-              name: 'Baseline',
-              line: { color: '#94a3b8', width: 2, dash: 'dot' }
-            },
-            {
-              x: xSorted,
-              y: revSorted,
-              type: 'scatter',
-              mode: 'lines',
-              name: 'Revised',
-              line: { color: '#38bdf8', width: 3, shape: 'spline' },
-              fill: 'tozeroy',
-              fillcolor: 'rgba(56, 189, 248, 0.15)'
-            }
-          ]}
+          data={lineData}
           layout={{
             paper_bgcolor: 'rgba(0,0,0,0)',
             plot_bgcolor: 'rgba(0,0,0,0)',

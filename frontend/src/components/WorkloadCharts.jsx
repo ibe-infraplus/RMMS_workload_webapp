@@ -20,49 +20,108 @@ export default function WorkloadCharts({ results, selectedDept3 }) {
   const revSorted = sortedData.map(item => item.rev.workload_score || 0);
   const paveSorted = sortedData.map(item => item.rev.pavement_workload || 0);
 
+  const hasChanges = results.has_changes;
+
   // Highlighting selected district point
   const highlightTraces = [];
   const selectedDistrictRow = sortedData.find(item => Number(item.rev.dept3) === Number(selectedDept3));
   if (selectedDistrictRow) {
     const selLabel = `${selectedDistrictRow.rev.dept3} - ${selectedDistrictRow.rev.district_name}`;
     const selBaseVal = selectedDistrictRow.base.workload_score || 0;
-    const selRevVal = selectedDistrictRow.rev.workload_score || 0;
 
-    const selPaveVal = selectedDistrictRow.rev.pavement_workload || 0;
+    highlightTraces.push({
+      x: [selLabel],
+      y: [selBaseVal],
+      type: 'scatter',
+      mode: 'markers+text',
+      name: 'Selected (Baseline)',
+      marker: { color: '#ef4444', size: 12, line: { color: '#ffffff', width: 2 } },
+      text: [`Baseline: ${selBaseVal.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+      textposition: 'top center',
+      showlegend: false
+    });
 
-    highlightTraces.push(
+    if (hasChanges) {
+      const selRevVal = selectedDistrictRow.rev.workload_score || 0;
+      const selPaveVal = selectedDistrictRow.rev.pavement_workload || 0;
+
+      highlightTraces.push(
+        {
+          x: [selLabel],
+          y: [selRevVal],
+          type: 'scatter',
+          mode: 'markers+text',
+          name: 'Selected (Revised)',
+          marker: { color: '#b91c1c', size: 12, line: { color: '#ffffff', width: 2 } },
+          text: [`Revised: ${selRevVal.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+          textposition: 'bottom center',
+          showlegend: false
+        },
+        {
+          x: [selLabel],
+          y: [selPaveVal],
+          type: 'scatter',
+          mode: 'markers+text',
+          name: 'Selected (ผิวจราจร)',
+          marker: { color: '#ea580c', size: 12, line: { color: '#ffffff', width: 2 } },
+          text: [`ผิวจราจร: ${selPaveVal.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
+          textposition: 'bottom center',
+          showlegend: false
+        }
+      );
+    }
+  }
+
+  const barData = [
+    {
+      x: ['Baseline'],
+      y: [baselineWorkload],
+      type: 'bar',
+      text: [baselineWorkload].map(val => Number(val).toFixed(4)),
+      textposition: 'outside',
+      marker: { color: '#94a3b8' }
+    }
+  ];
+  if (hasChanges) {
+    barData.push({
+      x: ['Revised'],
+      y: [revisedWorkload],
+      type: 'bar',
+      text: [revisedWorkload].map(val => Number(val).toFixed(4)),
+      textposition: 'outside',
+      marker: { color: '#10b981' }
+    });
+  }
+
+  const lineData = [
+    {
+      x: xSorted,
+      y: baseSorted,
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Baseline',
+      line: { color: '#94a3b8', width: 2, dash: 'dot' }
+    }
+  ];
+  if (hasChanges) {
+    lineData.push(
       {
-        x: [selLabel],
-        y: [selBaseVal],
+        x: xSorted,
+        y: revSorted,
         type: 'scatter',
-        mode: 'markers+text',
-        name: 'Selected (Baseline)',
-        marker: { color: '#ef4444', size: 12, line: { color: '#ffffff', width: 2 } },
-        text: [`Baseline: ${selBaseVal.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
-        textposition: 'top center',
-        showlegend: false
+        mode: 'lines',
+        name: 'Revised',
+        line: { color: '#10b981', width: 3, shape: 'spline' },
+        fill: 'tozeroy',
+        fillcolor: 'rgba(16, 185, 129, 0.15)'
       },
       {
-        x: [selLabel],
-        y: [selRevVal],
+        x: xSorted,
+        y: paveSorted,
         type: 'scatter',
-        mode: 'markers+text',
-        name: 'Selected (Revised)',
-        marker: { color: '#b91c1c', size: 12, line: { color: '#ffffff', width: 2 } },
-        text: [`Revised: ${selRevVal.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
-        textposition: 'bottom center',
-        showlegend: false
-      },
-      {
-        x: [selLabel],
-        y: [selPaveVal],
-        type: 'scatter',
-        mode: 'markers+text',
-        name: 'Selected (ผิวจราจร)',
-        marker: { color: '#ea580c', size: 12, line: { color: '#ffffff', width: 2 } },
-        text: [`ผิวจราจร: ${selPaveVal.toLocaleString(undefined, { maximumFractionDigits: 2 })}`],
-        textposition: 'bottom center',
-        showlegend: false
+        mode: 'lines',
+        name: 'ผิวจราจร (Revised)',
+        line: { color: '#f97316', width: 2, shape: 'spline' }
       }
     );
   }
@@ -71,16 +130,9 @@ export default function WorkloadCharts({ results, selectedDept3 }) {
     <>
       <div className="chart-container" style={{ marginTop: '24px' }}>
         <Plot
-          data={[{
-            x: ['Baseline', 'Revised'],
-            y: [baselineWorkload, revisedWorkload],
-            type: 'bar',
-            text: [baselineWorkload, revisedWorkload].map(val => Number(val).toFixed(4)),
-            textposition: 'outside',
-            marker: { color: ['#94a3b8', '#10b981'] }
-          }]}
+          data={barData}
           layout={{
-            title: 'เปรียบเทียบคะแนน Workload ของแขวงที่เลือก',
+            title: hasChanges ? 'เปรียบเทียบคะแนน Workload ของแขวงที่เลือก' : 'คะแนน Workload ของแขวงที่เลือก (Baseline)',
             paper_bgcolor: 'rgba(0,0,0,0)',
             plot_bgcolor: 'rgba(0,0,0,0)',
             font: { color: '#f8fafc' },
@@ -100,32 +152,7 @@ export default function WorkloadCharts({ results, selectedDept3 }) {
       <div className="chart-container" style={{ marginTop: '24px' }}>
         <Plot
           data={[
-            {
-              x: xSorted,
-              y: baseSorted,
-              type: 'scatter',
-              mode: 'lines',
-              name: 'Baseline',
-              line: { color: '#94a3b8', width: 2, dash: 'dot' }
-            },
-            {
-              x: xSorted,
-              y: revSorted,
-              type: 'scatter',
-              mode: 'lines',
-              name: 'Revised',
-              line: { color: '#10b981', width: 3, shape: 'spline' },
-              fill: 'tozeroy',
-              fillcolor: 'rgba(16, 185, 129, 0.15)'
-            },
-            {
-              x: xSorted,
-              y: paveSorted,
-              type: 'scatter',
-              mode: 'lines',
-              name: 'ผิวจราจร (Revised)',
-              line: { color: '#f97316', width: 2, shape: 'spline' }
-            },
+            ...lineData,
             ...highlightTraces
           ]}
           layout={{
