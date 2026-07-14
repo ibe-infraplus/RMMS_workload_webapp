@@ -128,15 +128,15 @@ def compute_workload(
         # 2. Workload Unit
         workload_unit = q * base_value
 
-        # 3. Workload Score
+        # 3. Workload Score (divided by 1000 to display in thousands/hundreds)
         apply_damage_probability = bool(apply_cfg) and bool(use_damage_probability)
         if apply_damage_probability:
-            workload_score = workload_unit * p
+            workload_score = (workload_unit * p) / 1000.0
         else:
-            workload_score = workload_unit
+            workload_score = workload_unit / 1000.0
 
         # 4. Workload Cost (Base Cost in Baht)
-        base_cost = workload_score * budget_multiplier
+        base_cost = workload_score * 1000.0 * budget_multiplier
 
         profile = cfg.get("condition_profile", "none")
         weights = FACTOR_PROFILES.get(profile, {})
