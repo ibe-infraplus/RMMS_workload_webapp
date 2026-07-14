@@ -118,7 +118,6 @@ def load_all(data_dir: str, cache_buster: int = 1):
     return build_master(data_dir)
 
 
-@st.cache_data(show_spinner="กำลังคำนวณ baseline...")
 def compute_baseline(
     master: pd.DataFrame,
     data_dir: str,
@@ -137,7 +136,6 @@ def compute_baseline(
     )
 
 
-@st.cache_data(show_spinner=False)
 def build_workload_parameter_table(data_dir: str):
     lookup = damage_lookup(data_dir)
     rows = []
