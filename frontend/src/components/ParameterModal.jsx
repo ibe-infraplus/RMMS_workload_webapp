@@ -17,12 +17,12 @@ export default function ParameterModal({
     
     // Also update workloadOverrides so the backend respects the change
     setWorkloadOverrides(prev => {
-      const qCol = updatedConfig[idx].quantity_col;
-      if (!qCol) return prev;
+      const item = updatedConfig[idx].workload_item;
+      if (!item) return prev;
       return {
         ...prev,
-        [qCol]: {
-          ...prev[qCol],
+        [item]: {
+          ...prev[item],
           [field]: value
         }
       };
@@ -69,8 +69,8 @@ export default function ParameterModal({
     setCurrentConfig(initData.param_grid);
     const overrides = {};
     initData.param_grid.forEach(row => {
-      if (row.quantity_col) {
-        overrides[row.quantity_col] = {
+      if (row.workload_item) {
+        overrides[row.workload_item] = {
           damage_probability: row.damage_probability,
           unit_cost: row.unit_cost,
           apply_damage_probability: row.apply_damage_probability

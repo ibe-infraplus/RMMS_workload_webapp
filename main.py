@@ -270,6 +270,9 @@ def calculate_workload(req: CalculateRequest):
         q_col = cfg["quantity_col"]
         if q_col:
             val = float(pd.to_numeric(pd.Series([selected_row.get(q_col, 0)]), errors="coerce").fillna(0).iloc[0])
+            if "ตัดหญ้า" in cfg["item"]:
+                sidewalk_sqm = float(pd.to_numeric(pd.Series([selected_row.get("sidewalk_sqm", 0)]), errors="coerce").fillna(0).iloc[0])
+                val = max(0.0, val - (sidewalk_sqm / 1000.0))
             default_quantities[q_col] = val
 
     # Compute budget framework comparison
@@ -320,8 +323,8 @@ def calculate_workload(req: CalculateRequest):
             break
 
     any_param_changed = False
-    for q_col, override in req.workload_overrides.items():
-        default_cfg = next((c for c in WORKLOAD_CONFIG if c.get("quantity_col") == q_col), None)
+    for key, override in req.workload_overrides.items():
+        default_cfg = next((c for c in WORKLOAD_CONFIG if c.get("item") == key or c.get("quantity_col") == key), None)
         if default_cfg:
             default_p, default_uc = get_dynamic_unit_cost_and_probability(default_cfg, damage_lookup("data"), "data")
             override_p = override.get("damage_probability")

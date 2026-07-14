@@ -82,7 +82,8 @@ def compute_workload(
     for cfg in config_to_use:
         p, unit_cost = get_dynamic_unit_cost_and_probability(cfg, lookup, data_dir=data_dir)
         q_col = cfg.get("quantity_col", "")
-        ov = override_map.get(q_col, {}) if isinstance(override_map, dict) else {}
+        item = cfg.get("item", "")
+        ov = override_map.get(item, override_map.get(q_col, {})) if isinstance(override_map, dict) else {}
         if isinstance(ov, dict) and "unit_cost" in ov and ov["unit_cost"] is not None:
             unit_cost = float(ov["unit_cost"])
         resolved_costs.append(unit_cost)
@@ -97,8 +98,11 @@ def compute_workload(
         q_col = cfg.get("quantity_col", "")
         item = cfg.get("item", "")
         q = pd.to_numeric(master[q_col], errors="coerce").fillna(0) if q_col and q_col in master.columns else pd.Series(0, index=master.index)
+        if "งานตัดหญ้า" in item:
+            sidewalk_km = pd.to_numeric(master["sidewalk_sqm"], errors="coerce").fillna(0) / 1000.0
+            q = (q - sidewalk_km).clip(lower=0)
         p, unit_cost = get_dynamic_unit_cost_and_probability(cfg, lookup, data_dir=data_dir)
-        ov = override_map.get(q_col, {}) if isinstance(override_map, dict) else {}
+        ov = override_map.get(item, override_map.get(q_col, {})) if isinstance(override_map, dict) else {}
         if isinstance(ov, dict):
             if "damage_probability" in ov and ov["damage_probability"] is not None:
                 p = float(ov["damage_probability"])

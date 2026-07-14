@@ -53,6 +53,45 @@ function App() {
       const savedGrid = localStorage.getItem('parameter_grid');
       const savedOverrides = localStorage.getItem('workload_overrides');
 
+      if (savedGrid || savedOverrides) {
+        const keepCustom = window.confirm("🗂️ ตรวจพบข้อมูล Parameter ที่ได้รับการปรับแต่งไว้ก่อนหน้า\n\n- ตกลง (OK): เพื่อเก็บค่าที่ปรับแต่งไว้ใช้งานชั่วคราวต่อ\n- ยกเลิก (Cancel): เพื่อล้างค่าทั้งหมดกลับเป็นค่าเริ่มต้นของระบบ");
+        if (!keepCustom) {
+          localStorage.removeItem('parameter_grid');
+          localStorage.removeItem('workload_overrides');
+          localStorage.removeItem('max_factor_uplift');
+          localStorage.removeItem('use_damage_probability');
+          localStorage.removeItem('budget_multiplier');
+          localStorage.removeItem('budget_framework');
+          
+          setCurrentConfig(res.data.param_grid);
+          const overrides = {};
+          res.data.param_grid.forEach(row => {
+            if (row.workload_item) {
+              overrides[row.workload_item] = {
+                damage_probability: row.damage_probability,
+                unit_cost: row.unit_cost,
+                apply_damage_probability: row.apply_damage_probability
+              };
+            }
+          });
+          setWorkloadOverrides(overrides);
+          setQuantityUpdates({});
+          setBudgetMultiplier(res.data.default_budget_multiplier || 100.0);
+          setBudgetFramework({
+            pavement: 50,
+            traffic: 15,
+            drainage: 15,
+            others: 10,
+            bridge: 5,
+            shoulder: 5
+          });
+          setMaxFactorUplift(0.15);
+          setUseDamageProbability(true);
+          setLoadingInit(false);
+          return;
+        }
+      }
+
       if (savedGrid) {
         setCurrentConfig(JSON.parse(savedGrid));
       } else {
@@ -64,8 +103,8 @@ function App() {
       } else {
         const overrides = {};
         res.data.param_grid.forEach(row => {
-          if (row.quantity_col) {
-            overrides[row.quantity_col] = {
+          if (row.workload_item) {
+            overrides[row.workload_item] = {
               damage_probability: row.damage_probability,
               unit_cost: row.unit_cost,
               apply_damage_probability: row.apply_damage_probability

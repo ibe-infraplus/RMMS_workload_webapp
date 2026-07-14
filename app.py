@@ -176,7 +176,24 @@ st.caption(
 # =========================================================
 
 with st.sidebar:
-    st.header("ตั้งค่า")
+    st.header("การตั้งค่าจำลองสถานการณ์")
+    
+    # Reboot/Rerun prompt condition
+    has_session_state_mods = any(k.startswith("q_") or k == "workload_param_grid" or k == "budget_multiplier_input" for k in st.session_state)
+    if has_session_state_mods:
+        reset_mode = st.radio(
+            "🗂️ ตรวจพบประวัติการปรับแต่งค่าบนระบบ",
+            options=["เก็บค่าที่ปรับแต่งไว้ชั่วคราว", "ล้างกลับเป็นค่าเริ่มต้นของระบบ"],
+            index=0,
+            help="เลือกเพื่อกำหนดพฤติกรรมเมื่อระบบมีการ Rerun หรือโหลดหน้าเว็บใหม่"
+        )
+        if reset_mode == "ล้างกลับเป็นค่าเริ่มต้นของระบบ":
+            for k in list(st.session_state.keys()):
+                if k.startswith("q_") or k == "workload_param_grid" or k == "budget_multiplier_input":
+                    del st.session_state[k]
+            st.rerun()
+        st.write("---")
+        
     data_dir = st.text_input("Data folder", value="data")
     damage_mode = st.selectbox(
         "Use Damage Probability (Revised)",
@@ -234,10 +251,10 @@ with st.sidebar:
 
     workload_overrides = {}
     for _, row in editable_param_df.iterrows():
-        q_col = str(row.get("quantity_col", "")).strip()
-        if not q_col:
+        item = str(row.get("workload_item", "")).strip()
+        if not item:
             continue
-        workload_overrides[q_col] = {
+        workload_overrides[item] = {
             "damage_probability": float(pd.to_numeric(row.get("damage_probability", 1.0), errors="coerce")),
             "unit_cost": float(pd.to_numeric(row.get("unit_cost", 0.0), errors="coerce")),
             "apply_damage_probability": bool(row.get("apply_damage_probability", True)),
@@ -274,7 +291,7 @@ Total Budget:
 # =========================================================
 
 try:
-    master = load_all(data_dir, cache_buster=4)
+    master = load_all(data_dir, cache_buster=5)
 except Exception as e:
     st.error(str(e))
     st.stop()
@@ -327,6 +344,9 @@ for category, cfgs in configs_by_category.items():
         for j, (idx, cfg) in enumerate(cfgs):
             q_col = cfg["quantity_col"]
             default_value = float(pd.to_numeric(pd.Series([selected_row.get(q_col, 0)]), errors="coerce").fillna(0).iloc[0])
+            if "ตัดหญ้า" in cfg["item"]:
+                sidewalk_sqm = float(pd.to_numeric(pd.Series([selected_row.get("sidewalk_sqm", 0)]), errors="coerce").fillna(0).iloc[0])
+                default_value = max(0.0, default_value - (sidewalk_sqm / 1000.0))
             label = f"{cfg['item']} ({cfg.get('unit', '')})"
             help_text = f"source column: {q_col}\n\n{cfg.get('note', '')}"
             step = 0.001 if cfg.get("unit") in ["กม.", "เมตร"] else 1.0
@@ -463,7 +483,10 @@ line_w_revised = line_w_revised.merge(pave_rev, on="dept3", how="left").fillna({
 
 line_w_all = line_w_base.merge(line_w_revised, on=["dept3", "district_name"], how="inner")
 line_w_all["district_label"] = line_w_all["dept3"].astype(str) + " - " + line_w_all["district_name"].astype(str)
-line_w_all = line_w_all.sort_values("revised_workload", ascending=False)
+if has_changes:
+    line_w_all = line_w_all.sort_values("revised_workload", ascending=False)
+else:
+    line_w_all = line_w_all.sort_values("baseline_workload", ascending=False)
 
 if has_changes:
     line_w_plot = pd.concat(
@@ -683,7 +706,10 @@ line_revised = revised_summary[["dept3", "district_name", "total_budget_model"]]
 line_revised = line_revised.rename(columns={"total_budget_model": "revised_budget"})
 line_all = line_base.merge(line_revised, on=["dept3", "district_name"], how="inner")
 line_all["district_label"] = line_all["dept3"].astype(str) + " - " + line_all["district_name"].astype(str)
-line_all = line_all.sort_values("revised_budget", ascending=False)
+if has_changes:
+    line_all = line_all.sort_values("revised_budget", ascending=False)
+else:
+    line_all = line_all.sort_values("baseline_budget", ascending=False)
 
 if has_changes:
     line_plot = pd.concat(

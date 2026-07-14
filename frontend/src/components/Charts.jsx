@@ -5,18 +5,25 @@ export default function Charts({ results }) {
 
   const formatBaht = (val) => new Intl.NumberFormat('th-TH', { style: 'decimal', maximumFractionDigits: 0 }).format(val) + ' บาท';
 
+  const hasChanges = results.has_changes;
+
   const sortedData = [...results.chart_data.all_districts_revised]
     .map((rev, index) => ({
       rev: rev,
       base: results.chart_data.all_districts_baseline[index]
     }))
-    .sort((a, b) => b.rev.total_budget_model - a.rev.total_budget_model);
+    .sort((a, b) => {
+      if (hasChanges) {
+        return b.rev.total_budget_model - a.rev.total_budget_model;
+      } else {
+        return b.base.total_budget_model - a.base.total_budget_model;
+      }
+    });
 
   const xSorted = sortedData.map(item => `${item.rev.dept3} - ${item.rev.district_name}`);
   const baseSorted = sortedData.map(item => item.base.total_budget_model);
   const revSorted = sortedData.map(item => item.rev.total_budget_model);
 
-  const hasChanges = results.has_changes;
 
   const barData = [
     {

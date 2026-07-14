@@ -7,20 +7,27 @@ export default function WorkloadCharts({ results, selectedDept3 }) {
   const baselineWorkload = results.metrics.baseline_workload_score;
   const revisedWorkload = results.metrics.revised_workload_score;
 
+  const hasChanges = results.has_changes;
+
   // All districts line chart data
   const sortedData = [...results.chart_data.all_districts_revised]
     .map((rev, index) => ({
       rev: rev,
       base: results.chart_data.all_districts_baseline[index]
     }))
-    .sort((a, b) => (b.rev.workload_score || 0) - (a.rev.workload_score || 0));
+    .sort((a, b) => {
+      if (hasChanges) {
+        return (b.rev.workload_score || 0) - (a.rev.workload_score || 0);
+      } else {
+        return (b.base.workload_score || 0) - (a.base.workload_score || 0);
+      }
+    });
 
   const xSorted = sortedData.map(item => `${item.rev.dept3} - ${item.rev.district_name}`);
   const baseSorted = sortedData.map(item => item.base.workload_score || 0);
   const revSorted = sortedData.map(item => item.rev.workload_score || 0);
   const paveSorted = sortedData.map(item => item.rev.pavement_workload || 0);
 
-  const hasChanges = results.has_changes;
 
   // Highlighting selected district point
   const highlightTraces = [];
