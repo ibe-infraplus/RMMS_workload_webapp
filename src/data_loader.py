@@ -315,6 +315,12 @@ def build_master(data_dir=None):
         if "length_to2" in group.columns:
             group["length_to2"] = (group["length_to2"] - group["warranty_distance"]).clip(lower=0)
             
+        if "length_to2" in group.columns and "sidewalk_sqm" in group.columns:
+            sidewalk_km = pd.to_numeric(group["sidewalk_sqm"], errors="coerce").fillna(0) / 1000.0
+            group["grass_mowing_qty"] = (group["length_to2"] - sidewalk_km).clip(lower=0)
+        else:
+            group["grass_mowing_qty"] = group.get("length_to2", 0)
+            
         group = group.drop(columns=["clean_key", "join_depot_code", "warranty_depot_code"], errors="ignore")
     except Exception as e:
         print(f"Warning: Could not load bridge_bmms.xlsx or warranty data: {e}")

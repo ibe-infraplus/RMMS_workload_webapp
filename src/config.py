@@ -175,7 +175,7 @@ WORKLOAD_CONFIG = [
     {
         "item": "งานตัดหญ้าและบำรุงรักษาเขตทาง",
         "category": "Asset",
-        "quantity_col": "length_to2",
+        "quantity_col": "grass_mowing_qty",
         "unit": "กม.",
         "damage_key": None,
         "damage_probability": None,

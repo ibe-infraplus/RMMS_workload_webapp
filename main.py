@@ -270,9 +270,6 @@ def calculate_workload(req: CalculateRequest):
         q_col = cfg["quantity_col"]
         if q_col:
             val = float(pd.to_numeric(pd.Series([selected_row.get(q_col, 0)]), errors="coerce").fillna(0).iloc[0])
-            if "ตัดหญ้า" in cfg["item"]:
-                sidewalk_sqm = float(pd.to_numeric(pd.Series([selected_row.get("sidewalk_sqm", 0)]), errors="coerce").fillna(0).iloc[0])
-                val = max(0.0, val - (sidewalk_sqm / 1000.0))
             default_quantities[q_col] = val
 
     # Compute budget framework comparison

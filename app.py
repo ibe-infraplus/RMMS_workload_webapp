@@ -291,7 +291,7 @@ Total Budget:
 # =========================================================
 
 try:
-    master = load_all(data_dir, cache_buster=5)
+    master = load_all(data_dir, cache_buster=6)
 except Exception as e:
     st.error(str(e))
     st.stop()
@@ -344,9 +344,6 @@ for category, cfgs in configs_by_category.items():
         for j, (idx, cfg) in enumerate(cfgs):
             q_col = cfg["quantity_col"]
             default_value = float(pd.to_numeric(pd.Series([selected_row.get(q_col, 0)]), errors="coerce").fillna(0).iloc[0])
-            if "ตัดหญ้า" in cfg["item"]:
-                sidewalk_sqm = float(pd.to_numeric(pd.Series([selected_row.get("sidewalk_sqm", 0)]), errors="coerce").fillna(0).iloc[0])
-                default_value = max(0.0, default_value - (sidewalk_sqm / 1000.0))
             label = f"{cfg['item']} ({cfg.get('unit', '')})"
             help_text = f"source column: {q_col}\n\n{cfg.get('note', '')}"
             step = 0.001 if cfg.get("unit") in ["กม.", "เมตร"] else 1.0
