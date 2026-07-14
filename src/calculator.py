@@ -49,6 +49,10 @@ def get_dynamic_unit_cost_and_probability(cfg, lookup, data_dir=None):
     """
     คืนค่า damage_probability และ unit_cost ตามประเภท workload
     """
+    item = cfg.get("item", "")
+    if "ตัดหญ้า" in item:
+        return 1.0, 10742.3944
+
     p = get_damage_probability(cfg, lookup)
     unit_cost = float(cfg.get("unit_cost", 0) or 0)
     return p, unit_cost
@@ -103,6 +107,10 @@ def compute_workload(
             apply_cfg = ov.get("apply_damage_probability", cfg.get("apply_damage_probability", True))
         else:
             apply_cfg = cfg.get("apply_damage_probability", True)
+
+        # Dynamic Unit Cost for Grass Cutting
+        if "งานตัดหญ้า" in item and (not isinstance(ov, dict) or "unit_cost" not in ov or ov["unit_cost"] is None):
+            unit_cost = master["Cluster"].map(lambda c: CLUSTER_GRASS_FORMULA.get(int(c), {}).get("slope", 0.0)).fillna(0.0)
 
         # 1. Base Value
         if isinstance(unit_cost, pd.Series):

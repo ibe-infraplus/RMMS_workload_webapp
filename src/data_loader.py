@@ -283,6 +283,11 @@ def build_master(data_dir=None):
         bridge_grouped = bridge_df.groupby("แขวงการทาง")["ความยาวสะพาน (ม.)"].sum().reset_index()
         bridge_grouped.columns = ["district_name_bridge", "bridge_m"]
 
+        # Filter bridges < 20m and count them per district
+        bridge_filtered = bridge_df[bridge_df["ความยาวสะพาน (ม.)"] < 20]
+        bridge_count_grouped = bridge_filtered.groupby("แขวงการทาง").size().reset_index(name="bridge_count")
+        bridge_count_grouped.columns = ["district_name_bridge", "bridge_count"]
+
         def clean_name(name):
             if pd.isna(name): return name
             name = str(name)
@@ -294,7 +299,11 @@ def build_master(data_dir=None):
 
         group["clean_key"] = group["district_name"].apply(clean_name)
         bridge_grouped["clean_key"] = bridge_grouped["district_name_bridge"].apply(clean_name)
+        bridge_count_grouped["clean_key"] = bridge_count_grouped["district_name_bridge"].apply(clean_name)
+        
         group = group.merge(bridge_grouped[["clean_key", "bridge_m"]], on="clean_key", how="left")
+        group = group.merge(bridge_count_grouped[["clean_key", "bridge_count"]], on="clean_key", how="left")
+        group["bridge_count"] = group["bridge_count"].fillna(0)
         
         # Merge warranty distance by depot_code
         warranty_df = get_warranty_distances(data_dir)

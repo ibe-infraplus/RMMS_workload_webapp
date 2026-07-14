@@ -348,7 +348,9 @@ for category, cfgs in configs_by_category.items():
                         cluster_val = int(selected_row.get("Cluster", 0))
                     except Exception:
                         cluster_val = 0
-                    st.caption(f"ℹ️ แขวงนี้เป็น Cluster {cluster_val} (ราคากลางเริ่มต้น: 0.40 บาท/ตร.ม.)")
+                    grass_rates = {0: 7623.59, 1: 10742.39, 2: 28697.51}
+                    rate = grass_rates.get(cluster_val, 0.0)
+                    st.caption(f"ℹ️ แขวงนี้เป็น Cluster {cluster_val} (ราคากลางเริ่มต้น: {rate:,.2f} บาท/กม.)")
                 if q_col == "length_to2" and "ตัดหญ้า" not in cfg["item"]:
                     warranty_val = float(pd.to_numeric(pd.Series([selected_row.get("warranty_distance", 0)]), errors="coerce").fillna(0).iloc[0])
                     st.text_input(
